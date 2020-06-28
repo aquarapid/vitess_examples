@@ -98,37 +98,6 @@ outer:
 	}
 }
 
-func find(re *binlogdatapb.RowEvent, fields []*querypb.Field, id int64) bool {
-	for _, change := range re.RowChanges {
-		if match(change.Before, fields, id) {
-			return true
-		}
-		if match(change.After, fields, id) {
-			return true
-		}
-	}
-	return false
-}
-
-func match(p3r *querypb.Row, fields []*querypb.Field, id int64) bool {
-	if p3r == nil {
-		return false
-	}
-	p3qr := &querypb.QueryResult{
-		Fields: fields,
-		Rows:   []*querypb.Row{p3r},
-	}
-	qr := sqltypes.Proto3ToResult(p3qr)
-	if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
-		return false
-	}
-	got, err := sqltypes.ToInt64(qr.Rows[0][0])
-	if err != nil {
-		return false
-	}
-	return got == id
-}
-
 func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEvent, fields []*querypb.Field) {
 	for _, re := range rowEvents {
 		result := &sqltypes.Result{
