@@ -62,7 +62,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	var flds []*querypb.Field
+	var fields []*querypb.Field
 	var rowEvents []*binlogdatapb.RowEvent
 outer:
 	for {
@@ -83,12 +83,12 @@ outer:
 					vgtid = e.Vgtid
 					fmt.Printf("VGTID event:  %v\n", vgtid)
 				case binlogdatapb.VEventType_FIELD:
-					flds = e.FieldEvent.Fields
+					fields = e.FieldEvent.Fields
 				case binlogdatapb.VEventType_ROW:
 					rowEvents = append(rowEvents, e.RowEvent)
 				case binlogdatapb.VEventType_COMMIT:
 					fmt.Printf("\nEvent log timestamp: %v --> %v\n", e.Timestamp, time.Unix(e.Timestamp, 0).UTC())
-					printRowEvents(vgtid, rowEvents, flds)
+					printRowEvents(vgtid, rowEvents, fields)
 					rowEvents = nil
 				default:
 					fmt.Printf("default event:  %v\n", e.Type)
@@ -98,24 +98,24 @@ outer:
 	}
 }
 
-func find(re *binlogdatapb.RowEvent, flds []*querypb.Field, id int64) bool {
+func find(re *binlogdatapb.RowEvent, fields []*querypb.Field, id int64) bool {
 	for _, change := range re.RowChanges {
-		if match(change.Before, flds, id) {
+		if match(change.Before, fields, id) {
 			return true
 		}
-		if match(change.After, flds, id) {
+		if match(change.After, fields, id) {
 			return true
 		}
 	}
 	return false
 }
 
-func match(p3r *querypb.Row, flds []*querypb.Field, id int64) bool {
+func match(p3r *querypb.Row, fields []*querypb.Field, id int64) bool {
 	if p3r == nil {
 		return false
 	}
 	p3qr := &querypb.QueryResult{
-		Fields: flds,
+		Fields: fields,
 		Rows:   []*querypb.Row{p3r},
 	}
 	qr := sqltypes.Proto3ToResult(p3qr)
@@ -129,10 +129,10 @@ func match(p3r *querypb.Row, flds []*querypb.Field, id int64) bool {
 	return got == id
 }
 
-func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEvent, flds []*querypb.Field) {
+func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEvent, fields []*querypb.Field) {
 	for _, re := range rowEvents {
 		result := &sqltypes.Result{
-			Fields: append([]*querypb.Field{{Name: "table", Type: querypb.Type_VARBINARY}, {Name: "op", Type: querypb.Type_VARBINARY}}, flds...),
+			Fields: append([]*querypb.Field{{Name: "table", Type: querypb.Type_VARBINARY}, {Name: "op", Type: querypb.Type_VARBINARY}}, fields...),
 		}
 		for _, change := range re.RowChanges {
 			typ := "U"
@@ -144,7 +144,7 @@ func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEven
 			switch typ {
 			case "U":
 				p3qr := &querypb.QueryResult{
-					Fields: flds,
+					Fields: fields,
 					Rows:   []*querypb.Row{change.Before, change.After},
 				}
 				qr := sqltypes.Proto3ToResult(p3qr)
@@ -154,7 +154,7 @@ func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEven
 				result.Rows = append(result.Rows, newRow)
 			case "I":
 				p3qr := &querypb.QueryResult{
-					Fields: flds,
+					Fields: fields,
 					Rows:   []*querypb.Row{change.After},
 				}
 				qr := sqltypes.Proto3ToResult(p3qr)
@@ -162,7 +162,7 @@ func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEven
 				result.Rows = append(result.Rows, newRow)
 			case "D":
 				p3qr := &querypb.QueryResult{
-					Fields: flds,
+					Fields: fields,
 					Rows:   []*querypb.Row{change.Before},
 				}
 				qr := sqltypes.Proto3ToResult(p3qr)
