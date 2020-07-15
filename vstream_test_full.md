@@ -28,6 +28,8 @@ in a database and then switch transparently to changes to the database.
 
 ```
 $ mysql -A -u root -P 15306 -h 127.0.0.1 commerce
+.
+.
 mysql> insert into product (sku,description, price) values ("12345", "1234", 100);
 Query OK, 1 row affected (0.02 sec)
 
@@ -82,12 +84,10 @@ events, followed by
   - In a different terminal, connect to use `commerce` database and insert some more data:
 
 ```
-$ mysql -A -u root -P 15306 -h 127.0.0.1
+$ mysql -A -u root -P 15306 -h 127.0.0.1 commerce
 .
 .
-mysql> insert into corder (order_id, customer_id, sku, price) values (23, 107, 123, "124445");
-Query OK, 1 row affected (0.01 sec)
-mysql> insert into customer (customer_id, email) values (9, "123");
+mysql> insert into product (sku,description, price) values ("1234567", "1234", 100);
 Query OK, 1 row affected (0.01 sec)
 ```
 
@@ -105,9 +105,12 @@ VGTID after event:  shard_gtids:<keyspace:"commerce" shard:"0" gtid:"MySQL56/6b6
 
   - Let's stop (CTRL-C) the vStream test client.
   - Now, let's delete some data to show that we are not just seeing
-a replay of the log events
+a replay of the log events:
 
 ```
+$ mysql -A -u root -P 15306 -h 127.0.0.1 commerce
+.
+.
 mysql> delete from product where sku = "12345";
 Query OK, 1 row affected (0.02 sec)
 ```

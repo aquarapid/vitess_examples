@@ -34,11 +34,12 @@ tablet_type: REPLICA
   - In a different terminal, connect to use `customer` database and insert some data:
 
 ```
-$ mysql -A -u root -P 15306 -h 127.0.0.1
+$ mysql -A -u root -P 15306 -h 127.0.0.1 customer
 .
 .
 mysql> insert into corder (order_id, customer_id, sku, price) values (23, 107, 123, "124445");
 Query OK, 1 row affected (0.01 sec)
+
 mysql> insert into customer (customer_id, email) values (9, "123");
 Query OK, 1 row affected (0.01 sec)
 ```
@@ -115,6 +116,9 @@ zone1-0000000402 customer 80- rdonly localhost:15402 localhost:17402 [] <null>
     after resharding:
 
 ```
+$ mysql -A -u root -P 15306 -h 127.0.0.1 customer
+.
+.
 mysql> insert into customer (customer_id, email) values (10, "1234");
 Query OK, 1 row affected (0.01 sec)
 
