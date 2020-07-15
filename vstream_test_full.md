@@ -1,6 +1,7 @@
-We are going to demonstrate streaming the contents as well as changes
+We are going to demonstrate streaming the **contents as well as changes**
 from a Vitess database using the vStream test client 
-(`vstream_test_client.go`), by using the Vitess local examples:
+([vstream_test_client.go](vstream_test_client.go)), by using the Vitess 
+local examples:
 
   - Checkout the Vitess code (https://github.com/vitessio/vitess.git) for 
     a local build.

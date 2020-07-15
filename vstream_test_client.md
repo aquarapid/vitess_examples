@@ -1,5 +1,6 @@
 We are going to demonstrate an example of a vStream client 
-(`vstream_test_client.go`), by using the Vitess local examples:
+([vstream_test_client.go](vstream_test_client.go)), by using the Vitess 
+local examples:
 
   - Checkout the Vitess code (https://github.com/vitessio/vitess.git) for 
     a local build.
