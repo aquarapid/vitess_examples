@@ -3,18 +3,24 @@ We are going to demonstrate an example of a vStream client
 
   - Checkout the Vitess code (https://github.com/vitessio/vitess.git) for 
     a local build.
-  - Build Vitess, and start the parts of the local example, i.e. run:
+  - Build Vitess, make sure no Vitess components are running, and start 
+the parts of the local example, i.e. run:
 
 ```
 $ source dev.env
 $ make clean ; make
+
+(Next, ONLY if necessary to clean up from a previous examples run)
+$ pkill -9 -f -e vtdataroot
+$ rm -rf ~/go/vtdataroot/*
+
 $ cd examples/local/
 $ for i in `ls -1 [1-2]*.sh` ; do echo $i ; ./$i ; sleep 5 ; done ; ./301_customer_sharded.sh
 ```
 
   - Now you have an unsharded `customer` keyspace setup.
     Let us start our example vStream client against this, and then shard it.
-  - Run (in a separate terminal):
+  - Run (in a separate terminal), from this repo:
 
 ```
 $ go run vstream_test_client.go -vtgate=localhost:15991 -keyspace=customer -tablet_type=replica -pos='[ {"shard":"", "gtid":"current"} ]'
