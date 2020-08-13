@@ -29,7 +29,7 @@ func main() {
 	pos := flag.String("pos", "", "JSON structure describing vtgtids to start from")
 	flag.Parse()
 	if *vtgate == "" || *keyspace == "" || *tabletType == "" || *pos == "" {
-		fmt.Printf("Sample usage: go run custom_vstream.go -vtgate=localhost:15991 -keyspace=commerce -tablet_type=master -pos='[ {\"shard\":\"x\", \"gtid\":\"xxxx\"} ]'\n")
+		fmt.Printf("Sample usage: go run vstream_test_client_debug.go -vtgate=localhost:15991 -keyspace=commerce -tablet_type=master -pos='[ {\"shard\":\"x\", \"gtid\":\"xxxx\"} ]'\n")
 		return
 	}
 
@@ -81,6 +81,7 @@ outer:
 				switch e.Type {
 				case binlogdatapb.VEventType_VGTID:
 					vgtid = e.Vgtid
+					fmt.Printf("VGTID event:  %v\n", vgtid)
 				case binlogdatapb.VEventType_FIELD:
 					fields = e.FieldEvent.Fields
 				case binlogdatapb.VEventType_ROW:
@@ -89,6 +90,8 @@ outer:
 					fmt.Printf("\nEvent log timestamp: %v --> %v\n", e.Timestamp, time.Unix(e.Timestamp, 0).UTC())
 					printRowEvents(vgtid, rowEvents, fields)
 					rowEvents = nil
+				default:
+					fmt.Printf("default event:  %v\n", e.Type)
 				}
 			}
 		}
