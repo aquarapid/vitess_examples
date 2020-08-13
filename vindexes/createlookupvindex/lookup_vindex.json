@@ -1,0 +1,24 @@
+{
+    "sharded": true,
+    "vindexes": {
+        "corder_lookup": {
+            "type": "consistent_lookup_unique",
+            "params": {
+                "table": "customer.corder_lookup",
+                "from": "sku",
+                "to": "keyspace_id"
+            },
+            "owner": "corder"
+        }
+    },
+    "tables": {
+        "corder": {
+            "column_vindexes": [
+                {
+                    "column": "sku",
+                    "name": "corder_lookup"
+                }
+            ]
+        }
+    }
+}
