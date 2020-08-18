@@ -1,0 +1,47 @@
+{
+    "sharded": true,
+    "tables": {
+        "users": {
+            "auto_increment": null,
+            "column_vindexes": [
+                {
+                    "column": "user_id",
+                    "name": "hash"
+                },
+                {
+                    "column": "name",
+                    "name": "users_name_idx"
+                }
+            ]
+        },
+        "users_name_idx": {
+            "auto_increment": null,
+            "column_vindexes": [
+                {
+                    "column": "name",
+                    "name": "md5"
+                }
+            ],
+            "type": ""
+        }
+    },
+    "vindexes": {
+        "hash": {
+            "type": "hash"
+        },
+        "md5": {
+            "owner": "",
+            "params": {},
+            "type": "unicode_loose_md5"
+        },
+        "users_name_idx": {
+            "owner": "users",
+            "params": {
+                "from": "name",
+                "table": "users_name_idx",
+                "to": "user_id"
+            },
+            "type": "lookup_hash"
+        }
+    }
+}
