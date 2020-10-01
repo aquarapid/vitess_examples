@@ -1,5 +1,13 @@
 Example procedure for backup/restore with the PlanetScaleDB Operator:
 
+This procedure assumes that you already have a running PlanetScaleDB
+Operator instance in your Kubernetes cluster.  The following example
+uses a cluster in GKE on Google Cloud Platform.  Refer to
+[exampledb_crosszone_backups.yaml](./exampledb_crosszone_backups.yaml)
+for the CRD Vitess cluster definition referred to in this document.
+Note that this YAML file is not functional as-is, and needs to be
+customized to your environment, even if you are running on GKE.
+
 1. Setup the `spec.backup` section of your PlanetScaleCluster (PSC) CRD
    definition appropriately, e.g.:
    ```
@@ -30,6 +38,12 @@ Example procedure for backup/restore with the PlanetScaleDB Operator:
    Lastly, note the backup policy section;  this allows the backup
    frequency and retention rules to be specified. The values provided above
    are also the default values if no values are specified.
+
+   Note that in this example we are using a single (default) backup location.
+   It is possible to define multiple backup locations, but each shard
+   definition then needs to specify which location is to be used. In the
+   simple case where there is only one location defined in the PSC, it
+   is unnecessary to define this shard to backup location linkage.
 
 1. Deploy the PSC via the operator.  After all the Vitess cluster pods
    come up (i.e. are in `Running` state), you can run a manual backup.
@@ -97,7 +111,18 @@ shards in the keyspaces:
    ```
    You may need to expose your vtgate instances to be able to connect to it.
    Consult the getting started guide. After you can connect, insert some data
-   into your database.
+   into your database, e.g.:
+
+   ```
+   $ mysql -u user -p -h vtgate.ip.address -A
+   Enter password:
+   Welcome to the MySQL monitor.  Commands end with ; or \g.
+   .
+   .
+   .
+   mysql> insert into users (user_id, name) values (101, "Jacques");
+   Query OK, 1 row affected (0.07 sec)
+   ```
 
 1. Now, you can take a manual backup for each shard, e.g.:
    ```
@@ -107,6 +132,22 @@ shards in the keyspaces:
    In my case, I ran these backups twice, adding some more data to the
    database between runs, so I can illustrate how to restore a backup
    older than the "most recent" one.
+
+1. Now, add some more data to the database, so you can prove to
+   yourself that the data being restored is truly the data as it
+   was at the time of the backup above.
+
+   ```
+   $ mysql -u user -p -h vtgate.ip.address -A
+   Enter password:
+   Welcome to the MySQL monitor.  Commands end with ; or \g.
+   .
+   .
+   .
+   mysql> insert into users (user_id, name) values (102, "Jacques");
+   Query OK, 1 row affected (0.07 sec)
+   ```
+
 1. Now, you should be able to see the actual backups via the CRD actions
    against k8s, e.g.:
    ```
@@ -208,7 +249,8 @@ shards in the keyspaces:
    uscentral1f-2191363457 main -80 replica 10.32.1.112:15000 10.32.1.112:3306 [] <null>
    ```
 
-   * After the restore is complete, the tablet types should transition to
+   * After the restore is complete, which should take a few minutes, even if
+     the original database was tiny, the tablet types should transition to
      `master`, e.g.:
 
    ```
