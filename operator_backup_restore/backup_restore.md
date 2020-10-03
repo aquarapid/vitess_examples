@@ -1,4 +1,4 @@
-Example procedure for backup/restore with the PlanetScaleDB Operator:
+# Example procedure for backup/restore with the PlanetScaleDB Operator
 
 This procedure assumes that you already have a running PlanetScaleDB
 Operator instance in your Kubernetes cluster.  The following example
