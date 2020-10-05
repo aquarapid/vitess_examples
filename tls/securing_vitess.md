@@ -22,12 +22,12 @@ for components to talk to each other:
       * vttablet -> MySQL
     * vttablet -> vtablet:  vreplication within or across shards
     * MySQL -> MySQL:  within-shard replication
-  * Control or meta-data path - e.g.:
+  * Control or meta-data paths - e.g.:
+    * vtctld -> vttablet
+    * vtctlclient -> vtctld
     * vtgate -> topology server
     * vttablet -> topology server
     * vtctld -> topology server
-    * vtctlclient -> vtctld
-    * vtctld -> vttablet
     * administrator using web browser -> vtgate web UI
     * administrator using web browser -> vttablet web UI
     * administrator using web browser -> vtctld web UI
@@ -37,13 +37,13 @@ for components to talk to each other:
 
 Note that the sensitive information mainly flows over the data path,
 and depending on your deployment model, you may not have to encrypt
-the control or meta-data path.  We recommend that you evaluate your
+all of the the control or meta-data path.  We recommend that you evaluate your
 needs in the context of your compliance directives, threat model and
 risk management framework.
 
 It should be noted that while Vitess provides the mechanism for
-securing these communication channels, it does not manage the
-important certificate management tasks like:
+securing these communication channels, it does *not* manage the
+certificate management tasks like:
   * Securely generating private keys
   * Issuing server certificates
   * Issuing, if necessary, client certificates
@@ -111,7 +111,10 @@ in question:
 
 With the preliminaries concluded, we can now move on to a walkthrough of
 how to setup the various TLS component combinations.  We will start with the
-data path.
+data path, then move on to the control paths. We will handle
+[encryption](#encryption) and [server authentication](#server-authentication)
+together, and then handle [client authentication](#client-authentication)
+separately.
 
 ## Certificate generation
 
@@ -120,9 +123,10 @@ to secure a TLS certificate hierarchy and issue certificates. For the
 purpose of these walkthroughs, we could use bare `openssl` commands to
 step through every detail. However, since we consider this an implementation
 detail that is likely to vary from user to user, we will leverage a
-shell-script-based tool called [easy-rsa](https://github.com/OpenVPN/easy-rsa).
+shell-script-based tool called [easy-rsa](https://github.com/OpenVPN/easy-rsa)
+that uses `openssl` under the covers, and hides much of the complexity.
 This tool has been around for many years as part of the OpenVPN project,
-and can perform all the steps to establish a CA, generate server certificates
+and can perform all the steps to setup a CA, generate server certificates
 and also client certificates if desired. Since `easy-rsa` is just a set of
 shell scripts, if you require a closer understanding of how every step works,
 this is easy to discover as well.  Lastly, `easy-rsa` can be used in
@@ -389,15 +393,17 @@ assume the use of username/password authentication:
 
 ## vttablet to MySQL
 
-vttablet communications to MySQL are often via local unix socket or via
-a TCP connection on localhost. In a case like this, it is probably unnecessary
-to configure encryption between vttablet and MySQL, since the traffic never
-leaves the local machine/VM. However, in some deployment models vttablet and
-MySQL are running on different hosts, and you may want vttablet to use TLS to
-speak to MySQL.  We will not cover configuring MySQL to use TLS certificates
-extensively here, just the minimum.  Please consult the MySQL documentation
-for further information.  Again, we will also assume that vttablet will be
-using MySQL username/password client authentication.
+A common Vitess deployment model is to co-locate vttablet and MySQL on the
+same host/VM/container. In a case like this, vttablet connectivity to MySQL
+will be via local unix socket or TCP connection on localhost. It is probably
+unnecessary to configure encryption between vttablet and MySQL in this case,
+since the traffic never leaves the local machine/VM. However, in some
+deployment models vttablet and MySQL are running on different hosts, and
+you may want vttablet to use TLS to speak to MySQL.  We will not cover
+configuring MySQL to use TLS certificates extensively here, just the
+minimum.  Please consult the MySQL documentation for further information.
+Again, we will also assume that vttablet will be using MySQL
+username/password client authentication.
 
 * Generate a server certificate for our MySQL instance using our CA:
 
@@ -458,23 +464,34 @@ using MySQL username/password client authentication.
 
   If you just wish to encrypt the vttablet -> MySQL server communication
   and you do not care about server certificate validation, you can just use the
-  vttablet flags:
+  this vttablet flag instead:
 
   ```
   -db_flags 2048
   ```
-  
-  instead.
 
-## vtgate to vttablet
+* Note that using the above `db_flags` will also result in the MySQL to MySQL
+  communication for replication between the replica/rdonly instances of a
+  Vitess shard and its master to be encrypted, as long as the upstream MySQL
+  instance the replica is connecting to has been configured correctly to
+  support TLS MySQL protocol connections (see above).
+  TODO: verify
+  
+
+## vttablet data and control paths
 
 In Vitess, communication between vtgate and vttablet instances are via gRPC.
 gRPC uses HTTP/2 as a transport protocol, but by default this is not encrypted
 in Vitess.  To secure this data path you need to, at a minimum, configure
-TLS for gRPC on the server (vttablet) side. You may also want to verify
-the server TLS certificate from the client (vtgate) side using the server CA
-certificate.
+TLS for gRPC on the server (vttablet) side.
 
+Other components, as detailed in the [Introduction](#introduction), also
+connect to vttablet via gRPC. After configuring vttablet gRPC for TLS, you
+will need to configure all these components (vtgate, other vttablets, vtctld)
+explicitly to connect using TLS to vttablet via gRPC, or you will have a
+partially or wholly non-functional system.
+
+### vtgate to vttablet
 
 * First, generate a certificate for use by vttablet:
 
@@ -595,4 +612,139 @@ certificate.
   ```
   W1004 14:38:29.383672  214179 tablet_health_check.go:323] tablet cell:"zone1" uid:101  healthcheck stream error: Code: UNAVAILABLE
   vttablet: rpc error: code = Unavailable desc = all SubConns are in TransientFailure, latest connection error: connection error: desc = "transport: authentication handshake failed: tls: first record does not look like a TLS handshake"
+  ```
+
+### vttablet to vtablet:  vreplication within or across shards
+
+* For vreplication to work between vttablet instances once the gRPC server TLS
+options above are activated, you will need to add the following additional
+vttablet options:
+
+  ```
+  -tablet_grpc_server_name vttablet1 -tablet_grpc_ca /home/user/config/ca.crt 
+  ```
+
+  Since each vttablet instance may need to talk to more than one other
+  vttablet instances for vreplication streams, the implication is that
+  each vttablet instances needs to either:
+
+  * Use the same vttablet server key material and server certificate common
+    name for each vttablet instance. This is obviously the easiest option,
+    but might not conform to your compliance requirements.
+  * or, ensure each vttablet server certificate common name or IP SAN matches
+    the DNS name or IP it it accessed via. In this case, you can omit
+    the use of the `-tablet_grpc_server_name` above for vttablet, and also
+    for vtgate.
+  
+### vtctld to vttablet
+
+Once your vttablet(s) are configured with gRPC server TLS options as above,
+you will need to also add TLS client options to vtctld, or vtctld will be
+unable to connect to your vttablet(s).
+
+* To achieve this, add the following options to the vtctld commandline:
+
+  ```
+  -tablet_grpc_server_name vttablet1 -tablet_grpc_ca /home/user/config/ca.crt -tablet_manager_grpc_server_name vttablet1 -tablet_manager_grpc_ca /home/user/config/ca.crt
+  ```
+
+## vtctlclient to vtctld
+
+The communication from vtctlclient to vtctld is also via gRPC, so the method
+for securing it is similar to vtctld to vttablet above. 
+
+* Generate a server certificate for vtctld:
+
+  ```
+  $ cd ~/CA/
+  $ ./easyrsa gen-req vtctld1 nopass
+
+  Note: using Easy-RSA configuration from: /home/user/CA/vars
+  Using SSL: openssl OpenSSL 1.1.1g FIPS  21 Apr 2020
+  Generating a RSA private key
+  ..................................................+++++
+  ....................................................+++++
+  writing new private key to '/home/user/CA/pki/easy-rsa-234817.QW1l8f/tmp.REK9r3'
+  -----
+  You are about to be asked to enter information that will be incorporated
+  into your certificate request.
+  What you are about to enter is what is called a Distinguished Name or a DN.
+  There are quite a few fields but you can leave some blank
+  For some fields there will be a default value,
+  If you enter '.', the field will be left blank.
+  -----
+  Country Name (2 letter code) [US]:
+  State or Province Name (full name) [California]:
+  Locality Name (eg, city) [Mountain View]:
+  Organization Name (eg, company) [PlanetScale Inc]:
+  Organizational Unit Name (eg, section) [Operations]:
+  Common Name (eg: your user, host, or server name) [vtctld1]:
+  Email Address [carequest@planetscale.com]:
+
+  Keypair and certificate request completed. Your files are:
+  req: /home/user/CA/pki/reqs/vtctld1.req
+  key: /home/user/CA/pki/private/vtctld1.key
+
+  $ ./easyrsa sign-req server vtctld1
+
+  Note: using Easy-RSA configuration from: /home/user/CA/vars
+  Using SSL: openssl OpenSSL 1.1.1g FIPS  21 Apr 2020
+
+
+  You are about to sign the following certificate.
+  Please check over the details shown below for accuracy. Note that this request
+  has not been cryptographically verified. Please be sure it came from a trusted
+  source or that you have verified the request checksum with the sender.
+
+  Request subject, to be signed as a server certificate for 1095 days:
+
+  subject=
+      countryName               = US
+      stateOrProvinceName       = California
+      localityName              = Mountain View
+      organizationName          = PlanetScale Inc
+      organizationalUnitName    = Operations
+      commonName                = vtctld1
+      emailAddress              = carequest@planetscale.com
+
+
+  Type the word 'yes' to continue, or any other input to abort.
+    Confirm request details: yes
+  Using configuration from /home/user/CA/pki/easy-rsa-234873.8zKYwl/tmp.zDGxDd
+  Enter pass phrase for /home/user/CA/pki/private/ca.key:
+  Check that the request matches the signature
+  Signature ok
+  The Subject's Distinguished Name is as follows
+  countryName           :PRINTABLE:'US'
+  stateOrProvinceName   :ASN.1 12:'California'
+  localityName          :ASN.1 12:'Mountain View'
+  organizationName      :ASN.1 12:'PlanetScale Inc'
+  organizationalUnitName:ASN.1 12:'Operations'
+  commonName            :ASN.1 12:'vtctld1'
+  emailAddress          :IA5STRING:'carequest@planetscale.com'
+  Certificate is to be certified until Oct  5 02:30:05 2023 GMT (1095 days)
+
+  Write out database with 1 new entries
+  Data Base Updated
+
+  Certificate created at: /home/user/CA/pki/issued/vtctld1.crt
+
+  $ cp /home/user/CA/pki/issued/vtctld1.crt ~/config/
+  $ cp /home/user/CA/pki/private/vtctld1.key ~/config/
+  ```
+
+* Add TLS gRPC server options to vtctld commandline:
+
+  ```
+  -grpc_cert /home/user/config/vtctld1.crt -grpc_key /home/user/config/vtctld1.key
+  ```
+
+  and restart vtctld.
+
+* At this point, all vtctlclient connections to vtctld will need the
+  appropriate additional TLS gRPC options, or they will fail.  Add these
+  options:
+
+  ```
+  -vtctld_grpc_ca /home/user/config/ca.crt -vtctld_grpc_server_name vtctld1
   ```
