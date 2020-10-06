@@ -37,13 +37,13 @@ for components to talk to each other:
 
 Note that the sensitive information mainly flows over the data path,
 and depending on your deployment model, you may not have to encrypt
-the control or meta-data path.  We recommend that you evaluate your
+all of the the control or meta-data path.  We recommend that you evaluate your
 needs in the context of your compliance directives, threat model and
 risk management framework.
 
 It should be noted that while Vitess provides the mechanism for
-securing these communication channels, it does not manage the
-important certificate management tasks like:
+securing these communication channels, it does *not* manage the
+certificate management tasks like:
   * Securely generating private keys
   * Issuing server certificates
   * Issuing, if necessary, client certificates
