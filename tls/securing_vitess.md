@@ -748,3 +748,82 @@ for securing it is similar to vtctld to vttablet above.
   ```
   -vtctld_grpc_ca /home/user/config/ca.crt -vtctld_grpc_server_name vtctld1
   ```
+
+## Topology server data paths
+
+Vitess supports several topology server implementations, with the major ones
+being `etcd` and `ZooKeeper`. Since each of these use their own protocols,
+securing communications between Vitess components (like vtgate, vttablet and
+vtctld) and the topology server is specific to the topology server
+implementation.  We we will cover `etcd` first, then `ZooKeeper`.
+
+It should be noted that regardless of the implementation, no sensitive data
+is stored in the Vitess topology server, i.e.:
+ * No data (queries/results) is stored in, or flows through, the topology server.
+ * No secrets (keys, certificates, passwords) are stored in the toplogy server
+   data store.
+ * Only metadata (VSchema, keyspace and shard information) is stored in the
+   topology server data store.
+
+### Configuring etcd for secure connections
+
+We will not cover setting up `etcd` with certificates in this guide.
+You can consult the `etcd` documenation
+[here](https://etcd.io/docs/v3.2.17/op-guide/security/). Note that you
+can use `easy-rsa` as above to generate your server private key and
+certificate pairs. If you do not require client authentication, that
+is sufficient, and you then just have to distribute your CA certificate
+(`/home/user/CA/pki/ca.crt` in the examples above) to your clients, and
+proceed as in the next section.
+
+### Configuring secure connectivity between vtgate/vttablet/vtctld and etcd
+
+The Vitess servers (vtgate/vttablet/vtctld) share the same set of parameters
+to connect via TLS to `etcd`:
+
+ * `-topo_etcd_tls_ca` : Path to the PEM certificate used to authenticate the 
+   TLS CA certificate presented by the `etcd` server.  Enables TLS to `etcd`
+   if present.
+ * `-topo_etcd_tls_cert` : Path to a PEM client certificate (mTLS) used to
+   authenticate this client to the `etcd` server. Only necessary if your
+   `etcd` server requires client authentication.
+ * `-topo_etcd_tls_key` : Path to a PEM private key used for exchanging the
+   client certificate (mTLS) with the `etcd` server. Only necessary if
+   your `etcd` server requires client authentication.
+
+As is necessary for your design/architecture, add one or more of the above
+options to your vtgate, vttablet and vtctld instances.
+
+### Configuring ZooKeeper for secure connections
+
+We will not cover setting up `Zookeeper` with certificates in this guide.
+You can consult the `Zookeeper` documenation
+[here](https://cwiki.apache.org/confluence/display/ZOOKEEPER/ZooKeeper+SSL+User+Guide),
+specifically the `Server` section. Note that you can use `easy-rsa` as above
+to generate your server private key and certificate pairs. If you do not
+require client authentication, that is sufficient, and you then just have
+to distribute your CA certificate (`/home/user/CA/pki/ca.crt` in the examples
+above) to your clients, and proceed as in the next section.
+
+### Configuring secure connectivity between vtgate/vttablet/vtctld and ZooKeeper
+
+The Vitess servers (vtgate/vttablet/vtctld) share the same set of parameters
+to connect via TLS to `Zookeeper`:
+
+ * `-topo_zk_tls_ca` : Path to the PEM certificate used to authenticate the
+   TLS CA certificate presented by the `Zookeeper` server.  Enables TLS to
+   `etcd` if present.
+ * `-topo_zk_tls_cert` : Path to a PEM client certificate (mTLS) used to
+   authenticate this client to the `Zookeeper` server. Only necessary if your
+   `Zookeeper` server requires client authentication.
+ * `-topo_zk_tls_key` : Path to a PEM private key used for exchanging the
+   client certificate (mTLS) with the `Zookeeper` server. Only necessary if
+   your `Zookeeper` server requires client authentication.
+ * `-topo_zk_auth_file` : Unlike `etcd`, `Zookeeper` also supports
+   username/password authentication from clients.  This option is used to
+   pass the combination of authentication schema, username and password to
+   the client to connect with to the server, e.g. with a value like 
+   `digest:username:password`.
+
+As is necessary for your design/architecture, add one or more of the above
+options to your vtgate, vttablet and vtctld instances.
