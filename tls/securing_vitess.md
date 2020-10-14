@@ -787,9 +787,9 @@ to connect via TLS to `etcd`:
  * `-topo_etcd_tls_cert` : Path to a PEM client certificate (mTLS) used to
    authenticate this client to the `etcd` server. Only necessary if your
    `etcd` server requires client authentication.
- * `-topo_etcd_tls_key` : Path to a PEM private key used for exchanging the
-   client certificate (mTLS) with the `etcd` server. Only necessary if
-   your `etcd` server requires client authentication.
+ * `-topo_etcd_tls_key` : Path to a PEM private key used for signing the
+   client certificate (mTLS) exchange with the `etcd` server. Only
+   necessary if your `etcd` server requires client authentication.
 
 As is necessary for your design/architecture, add one or more of the above
 options to your vtgate, vttablet and vtctld instances.
@@ -816,9 +816,10 @@ to connect via TLS to `Zookeeper`:
  * `-topo_zk_tls_cert` : Path to a PEM client certificate (mTLS) used to
    authenticate this client to the `Zookeeper` server. Only necessary if your
    `Zookeeper` server requires client authentication.
- * `-topo_zk_tls_key` : Path to a PEM private key used for exchanging the
-   client certificate (mTLS) with the `Zookeeper` server. Only necessary if
-   your `Zookeeper` server requires client authentication.
+ * `-topo_zk_tls_key` : Path to a PEM private key used for signing the
+   client certificate (mTLS) exchange with the `Zookeeper` server. Only
+   necessary if your `Zookeeper` server requires client certificate
+   authentication.
  * `-topo_zk_auth_file` : Unlike `etcd`, `Zookeeper` also supports
    username/password authentication from clients.  This option is used to
    pass the combination of authentication schema, username and password to
@@ -827,3 +828,98 @@ to connect via TLS to `Zookeeper`:
 
 As is necessary for your design/architecture, add one or more of the above
 options to your vtgate, vttablet and vtctld instances.
+
+
+## Generating client certificates with easy-rsa
+
+`easy-rsa` can also be used to generate client certificates (i.e for mTLS or
+mutual TLS).  Mutual TLS needs at least two additional parameters on the
+client side, and one additional parameter on the server side:
+
+  * Client side:
+    * Private key to sign the client certificate exchange with server.
+    * Client certificate itself.
+  * Server side:
+    * CA certificate that signed the client certificate(s) that the
+    client(s) are presenting.
+
+To generate the client-side private and client certificate using `easy-rsa`:
+
+  ```
+  $ cd ~/CA/
+  $ ./easyrsa gen-req client1 nopass 
+  Note: using Easy-RSA configuration from: /home/user/CA/vars
+  Using SSL: openssl OpenSSL 1.1.1g FIPS  21 Apr 2020
+  Generating a RSA private key
+  ..........+++++
+  .........+++++
+  writing new private key to '/home/user/CA/pki/easy-rsa-144133.y9mHHP/tmp.LSLIhv'
+  -----
+  You are about to be asked to enter information that will be incorporated
+  into your certificate request.
+  What you are about to enter is what is called a Distinguished Name or a DN.
+  There are quite a few fields but you can leave some blank
+  For some fields there will be a default value,
+  If you enter '.', the field will be left blank.
+  -----
+  Country Name (2 letter code) [US]:
+  State or Province Name (full name) [California]:
+  Locality Name (eg, city) [Mountain View]:
+  Organization Name (eg, company) [PlanetScale Inc]:
+  Organizational Unit Name (eg, section) [Operations]:
+  Common Name (eg: your user, host, or server name) [client1]:
+  Email Address [carequest@planetscale.com]:
+
+  Keypair and certificate request completed. Your files are:
+  req: /home/user/CA/pki/reqs/client1.req
+  key: /home/user/CA/pki/private/client1.key
+
+  $ ./easyrsa sign-req client client1
+  Note: using Easy-RSA configuration from: /home/user/CA/vars
+  Using SSL: openssl OpenSSL 1.1.1g FIPS  21 Apr 2020
+
+
+  You are about to sign the following certificate.
+  Please check over the details shown below for accuracy. Note that this request
+  has not been cryptographically verified. Please be sure it came from a trusted
+  source or that you have verified the request checksum with the sender.
+
+  Request subject, to be signed as a client certificate for 1095 days:
+
+  subject=
+      countryName               = US
+      stateOrProvinceName       = California
+      localityName              = Mountain View
+      organizationName          = PlanetScale Inc
+      organizationalUnitName    = Operations
+      commonName                = client1
+      emailAddress              = carequest@planetscale.com
+
+
+  Type the word 'yes' to continue, or any other input to abort.
+    Confirm request details: yes
+  Using configuration from /home/user/CA/pki/easy-rsa-144332.6AjhHm/tmp.KWRj4O
+  Enter pass phrase for /home/user/CA/pki/private/ca.key:
+  Check that the request matches the signature
+  Signature ok
+  The Subject's Distinguished Name is as follows
+  countryName           :PRINTABLE:'US'
+  stateOrProvinceName   :ASN.1 12:'California'
+  localityName          :ASN.1 12:'Mountain View'
+  organizationName      :ASN.1 12:'PlanetScale Inc'
+  organizationalUnitName:ASN.1 12:'Operations'
+  commonName            :ASN.1 12:'client1'
+  emailAddress          :IA5STRING:'carequest@planetscale.com'
+  Certificate is to be certified until Oct 14 04:10:28 2023 GMT (1095 days)
+
+  Write out database with 1 new entries
+  Data Base Updated
+
+  Certificate created at: /home/user/CA/pki/issued/client1.crt
+  ```
+
+  
+Our client certificate and key has now been issued, and we can
+use the files `/home/user/CA/pki/issued/client1.crt` and
+`/home/user/CA/pki/private/client1.key` on our client for
+client certificate (mTLS) authentication.
