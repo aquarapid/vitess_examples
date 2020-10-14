@@ -72,7 +72,7 @@ encrypt communications.  Therefore the basics around encrypting a specific
 client to server communication is straightforward:
 
   * Server-side:
-    * Generate a CA private key and cert.
+    * Generate a CA private key and cert as the root for your certificate hierarchy.
     * Generate a private key for the server component involved.
     * Generate a CSR using the private key.
     * Use the CA key material to use the CSR to generate a server cert
