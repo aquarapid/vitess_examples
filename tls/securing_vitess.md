@@ -106,6 +106,24 @@ in question:
   * Username/password authentication;  this is only an option for the
     connections involving the MySQL protocol.
 
+## Caller ID
+
+Caller ID is a feature provided by the Vitess stack to identify the source of
+queries that depends on authentication. There are two different Caller IDs:
+
+* **Immediate Caller ID**: It represents the secure client identity when it
+  enters the Vitess side:
+  * It is a single string, represents the user connecting to Vitess (vtgate).
+  * It is authenticated by the transport layer used.
+  * It is used by the Vitess TableACL feature.
+* **Effective Caller ID**: It provides detailed information on who the
+  individual caller process is:
+  * It contains more information about the caller: principal, component,
+    sub-component.
+  * It is provided by the application layer.
+  * It is not authenticated.
+  * It is exposed in query logs to be able to debug the source of a slow query,
+    for instance.
 
 # Walkthroughs
 
