@@ -72,10 +72,15 @@ encrypt communications.  Therefore the basics around encrypting a specific
 client to server communication is straightforward:
 
   * Server-side:
-    * Generate a CA private key and cert as the root for your certificate hierarchy.
+    * Generate a CA private key and cert as the root for your certificate
+      hierarchy.
+    * (optionally) generate intermediate keys to serve as signing
+      keys for your server certificates.  We will not cover this case in
+      this document.
     * Generate a private key for the server component involved.
     * Generate a CSR using the private key.
-    * Use the CA key material to use the CSR to generate a server cert
+    * Use the CA key material and the CSR to generate/sign the server
+      certificate.
     * Install the server cert and private key using the appropriate Vitess
       options for the component in question.
     * If required, adjust other Vitess component options to enforce/require
