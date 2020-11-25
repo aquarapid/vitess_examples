@@ -1,0 +1,14 @@
+apiVersion: v1
+items:
+- allowVolumeExpansion: true
+  apiVersion: storage.k8s.io/v1
+  kind: StorageClass
+  metadata:
+    name: uscentral1a-ssd
+  parameters:
+    type: pd-ssd
+    zone: us-central1-a
+  provisioner: kubernetes.io/gce-pd
+  reclaimPolicy: Delete
+  volumeBindingMode: Immediate
+kind: List
