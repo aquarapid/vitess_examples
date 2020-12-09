@@ -104,8 +104,13 @@ TODO:
  * `-stderrthreshold`
  * `-v`
  * `-keep_logs`
+   * Only works for "server" logs, not "query" logs
  * `-keep_logs_by_mtime`
+   * Only works for "server" logs, not "query" logs
  * `-log_rotate_max_size`
+   * Only works for "server" logs, not "query" logs, which will grow without
+     bound.
  * `-purge_logs_interval`
+   * Only works for "server" logs, not "query" logs
 
   * other options to limit the size of queries logged, size of errors logged, etc.
