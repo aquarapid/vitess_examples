@@ -44,11 +44,11 @@ There are also additional options to control the extent of the logging, e.g.:
 For both `vtgate` and `vttablet` the commandline option to enable query logging
 to a file is the same:
 
-```
+```sh
 -log_queries_to_file /path/to/filename.log
 ```
 
-Note:
+Notes:
   * The file will grow without limit.  You are reponsibile for rotating this
   log as necessary. Vitess does not include any mechanism to rotate
   query logs.
@@ -57,6 +57,8 @@ Note:
   * As mentioned previously, logging to a file has a performance overhead,
   that can be significant at high QPS levels.  Both CPU usage and p99 latency
   will be impacted, often in the range of 10% at very high QPS.
+  * The logfile format is essentially tab-delimited CSV (or TSV). It is
+  coveniently awk-able and grep-able.
 
 ### Query logging in the web UI
 
@@ -64,5 +66,51 @@ TODO
 
 ### Streaming query logs from the component
 
-TODO
+The same query log content as via `-log_queries_to_file` can be
+streamed from the `vtgate` or `vtgate` web port, either locally or remotely,
+by using a normal HTTP client (e.g. `curl`). This can be a convenient way to
+get querylogs for debugging without having to enable query logging to a file,
+which would need a component restart, because of the commandline parameter
+change required.
 
+The format if the log output is identical to that to the query logging to a
+file (i.e. tab-delimited CSV).  Because it is streamed via the HTTP socket,
+it is relatively easy to create a pipeline that takes this stream as input
+and then streams the logs into a different remote logging system (e.g.
+syslog, filebeats, etc.).  You can also use curl locally to redirect the
+stream to a file for as long as you need to capture it.
+
+Example (for vtgate or vttablet):
+ * Capture query logs for 60 seconds to the file `/var/tmp/temp_queries.tsv`:
+ ```sh
+$ timeout 60 curl http://127.0.0.1:xxxx/debug/querylog > /var/tmp/temp_queries.tsv
+ ```
+ * `xxxx` is the web UI port of the `vtgate` or `vttablet` component.
+  In the "local" examples in the Vitess distribution/source, the `vtgate` port
+  would be `15001` and the vttablet port would be `15100`, `15001`, etc.
+  depending on which `vttablet` instance you want to retrieve logs from.
+  The web UI port is specified to the `vtgate` and `vttablet` components
+  using the `-port` parameter.
+
+### Additional logging control options
+
+TODO:
+ * `-querylog-format`
+ * `-redact-debug-ui-queries`
+ * `-querylog-filter-tag`
+ * `-log_queries`: syslog - does this still work?
+ * `-sql-max-length-ui`
+ * `-sql-max-length-errors`
+ * `-stderrthreshold`
+ * `-v`
+ * `-keep_logs`
+   * Only works for "server" logs, not "query" logs
+ * `-keep_logs_by_mtime`
+   * Only works for "server" logs, not "query" logs
+ * `-log_rotate_max_size`
+   * Only works for "server" logs, not "query" logs, which will grow without
+     bound.
+ * `-purge_logs_interval`
+   * Only works for "server" logs, not "query" logs
+
+  * other options to limit the size of queries logged, size of errors logged, etc.
