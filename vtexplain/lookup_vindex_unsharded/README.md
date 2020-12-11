@@ -1,13 +1,11 @@
 Quick example of how to use vtexplain with a consistent lookup vindex
 
 In this case, both the owner table for the lookup vindex and the
-lookup vindex backing table are in separate namespaces, with the
-lookup vindex being in an unsharded namespace.  This is not
-typically good practice, but this exposed a bug in vtexplain, i.e that
-it cannot handle a mix of sharded and unsharded keyspaces.
-
-This example assumes the fixed vtexplain.
-
+lookup vindex backing table are in separate keyspaces, with the
+lookup vindex being in an unsharded keyspace.  This is not
+typically good practice, but is often used for testing and when
+getting started, and the syntax to get it working is a bit subtle,
+so here is an example.
 
 Output when running this:
 

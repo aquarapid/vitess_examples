@@ -26,11 +26,11 @@
             "c2_lookup_idx": {
                 "type": "consistent_lookup",
                 "params": {
-                    "table": "ks1.c2_lookup",
+                    "table": "c2_lookup",
                     "from": "c2",
                     "to": "keyspace_id"
                 },
-                "owner": "ks2.t1"
+                "owner": "t1"
             }
         },
         "tables": {
