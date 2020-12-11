@@ -66,7 +66,7 @@ TODO
 
 ### Streaming query logs from the component
 
-The same query log content that is available via `-log_queries_to_file` can be
+The same query log content as via `-log_queries_to_file` can be
 streamed from the `vtgate` or `vtgate` web port, either locally or remotely,
 by using a normal HTTP client (e.g. `curl`). This can be a convenient way to
 get querylogs for debugging without having to enable query logging to a file,
