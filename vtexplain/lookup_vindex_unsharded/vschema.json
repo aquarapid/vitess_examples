@@ -1,0 +1,51 @@
+{
+    "ks1": {
+        "sharded": false,
+        "vindexes": {
+            "hash": {
+                "type": "hash"
+            }
+        },
+        "tables": {
+            "c2_lookup": {
+                "column_vindexes": [
+                    {
+                        "column": "c2",
+                        "name": "hash"
+                    }
+                ]
+            }
+	}
+    },
+    "ks2": {
+        "sharded": true,
+        "vindexes": {
+            "hash": {
+                "type": "hash"
+            },
+            "c2_lookup_idx": {
+                "type": "consistent_lookup",
+                "params": {
+                    "table": "ks1.c2_lookup",
+                    "from": "c2",
+                    "to": "keyspace_id"
+                },
+                "owner": "ks2.t1"
+            }
+        },
+        "tables": {
+            "t1": {
+                "column_vindexes": [
+                    {
+                        "column": "c1",
+                        "name": "hash"
+                    },
+                    {
+                        "column": "c2",
+                        "name": "c2_lookup_idx"
+                    }
+                ]
+            }
+        }
+    }
+}
