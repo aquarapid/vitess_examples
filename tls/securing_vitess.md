@@ -485,6 +485,10 @@ username/password client authentication.
   if the certificate common name matches the DNS name vttablet is using
   to connect to the MySQL server.
 
+  The `1073743872` is a combination of the MySQL `CLIENT_SSL` (2048) and
+  `CLIENT_SSL_VERIFY_SERVER_CERT` flags (1073741824);  which means "encrypt
+  the connection to MySQL *and* verify the SSL cert presented by the server".
+
   If you just wish to encrypt the vttablet -> MySQL server communication
   and you do not care about server certificate validation, you can just use the
   this vttablet flag instead:
