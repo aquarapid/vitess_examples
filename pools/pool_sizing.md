@@ -9,7 +9,7 @@ shrink back down again.
 One thing to note is that each of these pools do not use unique MySQL
 usernames, so it can be hard from a MySQL processlist to distinguish
 between different pool connections.  Consult the `_active` pool metrics
-(e.g. ``vttablet_dba_conn_pool_active`) as the authoritative resource on
+(e.g. `vttablet_dba_conn_pool_active`) as the authoritative resource on
 how many MySQL protocol connections are in use for each pool.
 
 ## Pools:
@@ -24,7 +24,6 @@ how many MySQL protocol connections are in use for each pool.
   using the `CLIENT_FOUND_ROWS` option (i.e. the affected rows variable returned
   by the MySQL protocol becomes the number of rows matched by the `WHERE`
   clause instead)
-    
 
 * **conn_pool**:
   * Max size controlled controlled by:  `-queryserver-config-pool-size` (default 16)
