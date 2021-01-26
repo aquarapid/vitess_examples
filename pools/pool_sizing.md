@@ -28,41 +28,72 @@ how many MySQL protocol connections are in use for each pool.
 * **conn_pool**:
   * Max size controlled controlled by:  `-queryserver-config-pool-size` (default 16)
   * metric:  `vttablet_conn_pool_capacity`
+  * Potentially uses `-db_app_user`, `-db_dba_user` and `-db_appdebug_user`
+    i.e. defaults 'vt_app', 'vt_dba' and 'vt_appdebug'
   * Used as the vttablet query engine "normal" (non-streaming) connections pool.
 
 * **stream_conn_pool**:
   * Max size controlled by:  `-queryserver-config-stream-pool-size`     (default 200)
   * metric:  `vttablet_stream_conn_pool_capacity`
+  * Potentially uses `-db_app_user`, `-db_dba_user` and `-db_appdebug_user`
+    i.e. defaults 'vt_app', 'vt_dba' and 'vt_appdebug'
   * Used as vttablet query engine streaming connections pool. All streaming
   queries that are not transactional should use this pool.
 
 * **dba_conn_pool**:
   * Max size controlled by:  `-dba_pool_size`                           (default 20)
   * metric:  `vttablet_dba_conn_pool_capacity`
+  * vttablet user flag:  `-db_dba_user`                                 (default 'vt_dba')
   * Used by vttablet `ExecuteFetchAsDba` RPC.  Also used implicitly for
   various internal Vitess maintenance tasks (e.g. schema reloads, etc.)
 
 * **app_conn_pool**:
   * Max size controlled by:  `-app_pool_size`                           (default 40)
   * metric:  `vttablet_app_conn_pool_capacity`
+  * vttablet user flag:  `-db_app_user`                                 (default 'vt_app')
   * Used by vttablet `ExecuteFetchAsApp` RPC.
 
 * **tx_read_pool**:
   * Hardcoded                                                           (default 3)
   * metric:  `vttablet_tx_read_pool_capacity`
+  * vttablet user flag:  `-db_dba_user`                                 (default 'vt_dba')
   * Used in the (non-default) TWOPC `transaction_mode` for metadata state
   management.  This pool will always be empty unless TWOPC is used.
 
 * Pools associated with online DDL:
   * **online_ddl_executor_pool**:
     * Hardcoded                                                         (default 3)
+    * metric:  `vttablet_online_ddl_executor_pool_capacity`
+    * Potentially uses `-db_app_user`, `-db_dba_user` and `-db_appdebug_user`
+      i.e. defaults 'vt_app', 'vt_dba' and 'vt_appdebug'
     * Used in Online DDL to during the actual process of running gh-ost or pt-osc.
   * **table_gc_pool**:
     * Hardcoded                                                         (default 2)
+    * metric:  `vttablet_table_gc_pool_capacity`
+    * Potentially uses `-db_app_user`, `-db_dba_user` and `-db_appdebug_user`
+      i.e. defaults 'vt_app', 'vt_dba' and 'vt_appdebug'
     * Used in Online DDL to purge/evac/drop origin tables after Online
     DDL operations from them have been completed.
   * **throttler_pool**:
     * Hardcoded                                                         (default 2)
+    * metric:  `vttablet_throttler_pool_capacity`
+    * Potentially uses `-db_app_user`, `-db_dba_user` and `-db_appdebug_user`
+      i.e. defaults 'vt_app', 'vt_dba' and 'vt_appdebug'
     * Used in Online DDL to measure/track the master -> replica lag, and
     adjust the DDL copy speed accordingly.
 
+
+## Other DB connections used without pools:
+  * vttablet user flag:  `-db_allprivs_user`                             (default 'vt_allprivs')
+    * Created on demand by `ExecuteFetchAsAllPrivs`
+  * vttablet user flag:  `-db_erepl_user`                                (default 'vt_erepl')
+    * Used only if you setup replication explicitly from an external MySQL
+      instance **without** front-ending that instance with a tablet. This
+      user is then used to login to the external MySQL.
+  * vttablet user flag:  `-db_repl_user`                                 (default 'vt_repl')
+    * Used to setup MySQL replication between shard master and replica
+      instance types.
+  * vttablet user flag:  `-db_filtered_user`                              (default 'vt_filtered')
+    * Used for VReplication to setup filtered binlog stream from a source
+      shard MySQL instance.  Also used for actual copying of the upstream
+      source table rows in VReplication, if necessary.
