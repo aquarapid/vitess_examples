@@ -10,7 +10,14 @@ One thing to note is that each of these pools do not use unique MySQL
 usernames, so it can be hard from a MySQL processlist to distinguish
 between different pool connections.  Consult the `_active` pool metrics
 (e.g. `vttablet_dba_conn_pool_active`) as the authoritative resource on
-how many MySQL protocol connections are in use for each pool.
+how many MySQL protocol connections are in use for each pool.  In a
+similar fashion the `_exhausted` pool metrics (e.g.
+`vttablet_dba_conn_pool_exhausted`) can be used to see if a given pool
+has run out of connections (and how many times), since VTTablet startup.
+Note that a connection pool running out of connections is not necessarily
+a bad thing, since it limits the concurrency in the database. As a result,
+connection pools should be sized mindful of the capacity of the underlying
+MySQL instance(s).
 
 ## Pools:
 
