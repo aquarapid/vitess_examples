@@ -1,11 +1,21 @@
-# Using Vault to store vtgate credentials for authentication
+# Using Vault to store vttablet credentials for authentication to MySQL
 
 A new feature of Vitess 9.0 is the ability to store and retrieve
-vtgate credentials, that is the usernames and passwords used by
-MySQL protocol clients of vtgate, in a HashiCorp Vault server.
+vttablet credentials, that is the usernames and passwords used by
+vttablet to connect to backend MySQL instances, in a HashiCorp Vault server.
+Note that this is distinct from the usernames and passwords that
+you will use to connect via MySQL protocol to Vitess (vtgate). We cover
+that in a separate [document](vault_for_vtgate_credentials.md).
 This document is a brief walkthough on how to use this feature,
 including sample steps of the setup required on the Vault server
 side.
+
+If you have followed the accompanying guide to using Vault to
+store vtgate credentials, and you already have your Vault server
+up and running, you can skip the first part of the Vault setup 
+part of this document. The only part that differs is the storing
+of the vttablet to MySQL credentials (`dbcreds_secret.json`) in
+Vault.
 
 Note that the Vault configurations in this document are not
 necessarily recommended for production use. You should ensure that
@@ -15,21 +25,22 @@ compliance requirements and operational procedures.
 
 You will probably want to use some type of bootstrapping process
 to obtain the necessary `role_id` and `secret_id` values you
-need for configuring vtgate at vtgate startup time.  Manually
-bootstrapping your vtgate instances, as this document walks you
+need for configuring vttablet at vttablet startup time.  Manually
+bootstrapping your vttablet instances, as this document walks you
 through, is not an operationally scalable strategy.
 
-Note also that if you use Vault to retrieve your vtgate
+Note also that if you use Vault to retrieve your vttablet to MySQL server
 credential information as detailed in this document, your Vault server
 becomes an integral part of you Vitess serving infrastructure. In particular,
 if you Vault server is down at the time you (re)start one or more of your
-vtgate instances, you will end up with running vtgate instances that do
-not have authentication information.  As a result, your vtgates will be
-available, but your application will not be able to log into them.  You
-may want to have backup procedures (e.g. to switch to file-based vtgate
-auth) in place to deal with an event like this.  It would also be important
-to have automated monitoring of the vtgate and/or application log files
-in place to detect and alert events like these.
+vttablet instances, you will end up with running vttablet instances that do
+not have the necessary username and password information to log into the
+underlying MySQL server instances.  As a result, part of (or all of) your
+Vitess serving infrastructure might go down. You may want to have backup
+procedures (e.g. to switch to file-based vttablet auth) in place to deal
+with an event like this.  It would also be important to have automated
+monitoring of the vttablet log files in place to detect and alert events like
+these.
 
 ## Setup a Vault server
 
@@ -150,37 +161,50 @@ $ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault p
 Success! Uploaded policy: dbcreds
   ```
  * This policy is written to allow storing both vtgate credentials as well
-   as MySQL credentials used by vttablet in the Vault server.  We will be
-   covering vttablet MySQL credentials in a separate document.
+   as MySQL credentials used by vttablet in the Vault server.  We have 
+   covered the vtgate MySQL credentials in this [document](vault_for_vtgate_credentials.md).
 
- * Next, we are going to upload the actual vtgate credentials to the Vault
-   server.  This credential file has the same format as the `file` format 
-   vtgate credentials, as documented here:
-   https://vitess.io/docs/user-guides/configuration-advanced/user-management/#authentication
-   We have provided an example file, called `vtgatecreds_secret.json`, that just
+ * Next, we are going to upload the actual vttablet to MySQL server credentials
+   to the Vault server.  This credential file has the same format as the
+   `-db-credentials-file` format vttablet credentials.
+   We have provided an example file, called `dbcreds_secret.json`, that just
    looks like this:
  ```sh
 {
-  "vtgate_user": [
-    {
-      "Password": "password123"
-    }
+  "vt_app": [
+    "password"
+  ],
+  "vt_dba": [
+    "password"
+  ],
+  "vt_repl": [
+    "password"
+  ],
+  "vt_appdebug": [
+    "password"
+  ],
+  "vt_filtered": [
+    "password"
   ]
 }
  ```
- * Basically, it defines a single user (`vtgate_user`) and sets the password
-   to `password123`.  Note that you can still use MySQL password hashes
-   for your passwords here, in accordance with the documentation linked above,
-   this is just an example.
+ * Basically, it defines a list of passwords for users for the various
+   connection pools used by vttablet.  The usernames like `vt_app`, `vt_dba`,
+   etc. are the default ones used by vttablet, but you might use different ones
+   in your environment (via flags like `-db_app_user`, `-db_dba_user`, etc.).
+   In that case, you will need to adjust this credentials JSON appropriately.
+   Note that the passwords need to specified in plaintext in this file, you
+   will need to rely on the security and encryption of the Vault server to
+   protect them.
 
- * Now, let's go ahead and store the vtgate credentials in the
-   `vtgatecreds_secret.json` file in the Vault server.  As per usual,
+ * Now, let's go ahead and store the vttablet to MySQL server credentials in the
+   `dbcreds_secret.json` file in the Vault server.  As per usual,
    you should be using your `Initial Root Token`:
  ```sh
-$ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault kv put kv/prod/vtgatecreds @vtgatecreds_secret.json
+$ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault kv put kv/prod/dbcreds @dbcreds_secret.json
 Key              Value
 ---              -----
-created_time     2021-01-28T09:23:06.161462207Z
+created_time     2021-01-28T09:25:49.428175913Z
 deletion_time    n/a
 destroyed        false
 version          1
@@ -198,12 +222,12 @@ Success! Data written to: auth/approle/role/vitess
    environment a low TTL probably does not make sense, since you will
    be hitting your Vault server much more often than necessary to
    refresh tokens. You should also adjust the `secret_id_num_uses`
-   appropriately.  If you have a lot of vtgate instances, you may
+   appropriately.  If you have a lot of vttablet instances, you may
    need to make this (much) higher, assuming you will be using the
-   same approle for every vtgate instance.
+   same approle for every vttablet instance.
 
  * Now, we need to retrieve and save the `role_id` of the approle we just
-   created.  We will need it when configuring vtgate to use Vault:
+   created.  We will need it when configuring vttablet to use Vault:
  ```sh
 $ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault read auth/approle/role/vitess/role-id | grep ^role_id
 role_id    1ad616e9-7498-b7c3-742a-6ee962489629
@@ -216,139 +240,141 @@ to configure Vitess later:
 $ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault write auth/approle/role/vitess/secret-id k=v | grep ^secret_id | head -1
 secret_id             3111006f-5891-f326-d0f8-d29237829b6a
  ```
- * Again, save the `secret_id` value. Since vtgate **has** to read this from
+ * Again, save the `secret_id` value. Since vttablet **has** to read this from
    a file, we will save it to a file now:
  ```sh
 $ echo 3111006f-5891-f326-d0f8-d29237829b6a > secret_id
  ```
 
 
-## Configuring vtgate
+## Configuring vttablet
 
 Now we have obtained all the necessary information we need about our
-Vault configuration to complete the commandline parameters for vtgate
-and start vtgate. Let's review the necessary (static) parameters, and
+Vault configuration to complete the commandline parameters for vttablet
+and start vttablet. Let's review the necessary (static) parameters, and
 then the parameters that will use the non-static information we have
 collected. Note the values for these parameters we prescribe here
 align to this walkthrough example.
 
-### vtgate static parameters:
+### vttablet static parameters:
 
-You should add the following parameters to your vtgate startup; with the
+You should add the following parameters to your vttablet startup; with the
 example values to align to the Vault server we setup earlier:
- * Use Vault to retrieve vtgate auth:  **`-mysql_auth_server_impl vault`**
- * Set a timeout for speaking to the vault server:  **`-mysql_auth_vault_timeout 10s`**
- * Set a kv secret path where you stored the vtgate credentials (see earlier
-   in this document):  **`-mysql_auth_vault_path kv/prod/vtgatecreds`**
+ * Use Vault to retrieve vttablet to MySQL credentials:
+   **`-db-credentials-server vault`**
+ * Set a timeout for speaking to the vault server:
+   **`-db-credentials-vault-timeout 10s`**
+ * Set a kv secret path where you stored the vttablet credentials (see earlier
+   in this document):  **`-db-credentials-vault-path kv/prod/dbcreds`**
  * Point to the Vault server.  This also could be a load balancer pointing to
-   an HA Vault installation:  **`-mysql_auth_vault_addr https://127.0.0.1:8200`**
+   an HA Vault installation:  **`-db-credentials-vault-addr https://127.0.0.1:8200`**
  * Point to the PEM file containing the CA certificate we are going to
    validate the TLS server certificate the Vault server presents against:
-   **`-mysql_auth_vault_tls_ca $PWD/ca.pem`**
- * How often to renew the Vault tokens we obtain and refresh the authentication
-   information for vtgate from the Vault server.  This value should be
+   **`-db-credentials-vault-tls-ca $PWD/ca.pem`**
+ * How often to renew the Vault tokens we obtain and refresh the MySQL
+   credentials used by vttablet from the Vault server.  This value should be
    significantly lower than the `token_ttl` value configured for the approle
    above.  If it is not, timeouts and delays might result in a situation where
-   you cannot renew your Vault token.  In a case like this, vtgate will continue
-   using the credentials it obtained previously indefinitely;  but that might
-   not be the up-to-date credentials.  Again, monitoring the logs for messages
-   of events such as this and alerting accordingly is advisable in a
-   production environment:  **`-mysql_auth_vault_ttl 5m`**
+   you cannot renew your Vault token.  Note that unlike the Vault integration
+   for vtgate, in this case new vttablet logins to MySQL will start failing.
+   Monitoring the logs for messages of events such as this and alerting
+   accordingly is **strongly** advisable in a production environment:
+   **`-db-credentials-vault-ttl 5m`**
 
-### vtgate dynamic parameters:
+### vttablet dynamic parameters:
 
-Additionally, you will need to pass the following parameters to vtgate. Since
+Additionally, you will need to pass the following parameters to vttablet. Since
 these parameters could change over time, you will probably need a bootstrap
-script to populate or update them when you start vtgate:
+script to populate or update them when you start vttablet:
  * The `role_id` we obtained before from the approle we created:
-   **`-mysql_auth_vault_roleid 1ad616e9-7498-b7c3-742a-6ee962489629`**
+   **`-db-credentials-vault-roleid 1ad616e9-7498-b7c3-742a-6ee962489629`**
  * Provide a file to read the `secret_id` we obtained earlier and saved
    to a file also called `secret_id`:
-   **`-mysql_auth_vault_role_secretidfile $PWD/secret_id`**
+   **`-db-credentials-vault-role-secretidfile $PWD/secret_id`**
 
-### Log messages on vtgate startup
+### Log messages on vttablet startup
 
-Upon starting vtgate with the appropriate options, as above, and running
+Upon starting vttablet with the appropriate options, as above, and running
 the instance for a few minutes, you should see auth-related messages such
 as the following:
 
 ```sh
-$ grep auth vtgate.INFO
-I0130 15:17:45.750539  191369 auth_server_clientcert.go:36] Not configuring AuthServerClientCert because mysql_server_ssl_ca is empty
-I0130 15:17:45.750657  191369 auth_server_ldap.go:58] Not configuring AuthServerLdap because mysql_ldap_auth_config_file and mysql_ldap_auth_config_string are empty
-I0130 15:17:45.750673  191369 auth_server_static.go:91] Not configuring AuthServerStatic, as mysql_auth_server_static_file and mysql_auth_server_static_string are empty
-I0130 15:17:45.783696  191369 auth_server_vault.go:190] reloadVault(): success. Client status: Token ready
-I0130 15:22:45.793098  191369 auth_server_vault.go:190] reloadVault(): success. Client status: token renewed
+$ grep credentials vttablet.INFO
+I0131 18:29:03.128263  240018 credentials.go:241] Vault client status: Token ready
+I0131 18:34:03.456725  240018 credentials.go:241] Vault client status: token renewed
 ```
 
 **Annotated:**
- * The first three lines reflect that the TLS client cert, LDAP and static
- file auth methods for vtgate are not configured.
- * The fourth line reflects that vtgate has:
+ * The first line reflects that vttablet has:
    * successfully connected to Vault
    * successfully authenticated to Vault using the `role_id` and `secret_id`
    * successfully obtained a token
-   Implicitly, vtgate also fetched the JSON value for the vtgate user/passwords
+   Implicitly, vttablet also fetched the JSON value for the MySQL user/passwords
    from Vault, or an error would be seen.
  * The last line reflects that, 5 minutes after obtaining the intial token,
- as configured via `-mysql_auth_vault_ttl`, vtgate renewed the initial token
- with the Vault server.  Again, implicitly the JSON value for the vtgate
- user/passwords was also refreshed from the Vault server at the same time.
+ as configured via `-db-credentials-vault-ttl`, vttablet renewed the initial
+ token with the Vault server.  Again, implicitly the JSON value for the
+ MySQL user/passwords was also refreshed from the Vault server at the same
+ time.
 
 ### Changing/adding users and passwords
 
-The JSON value in Vault that contains the users and passwords can be changed
-at any time, and would get picked up by the vtgate servers the next time they
-refresh from Vault, as determined by the `-mysql_auth_vault_ttl` value.
+The JSON value in Vault that contains the MySQL users and passwords can be
+changed at any time, and would get picked up by the vttablet servers the next
+time they refresh from Vault, as determined by the `-db-credentials-vault-ttl`
+value.
 
-If you want to have the values updated more promptly, you can restart vtgate,
-or more gracefully, you can send a SIGHUP signal to the vtgate process (e.g. 
+If you want to have the values updated more promptly, you can restart vttablet,
+or more gracefully, you can send a SIGHUP signal to the vttablet process (e.g. 
 via `kill -HUP`).  The SIGHUP process will (among other things like reopening
-log files), cause the vtgate server to refresh its credentials from Vault.
+log files), cause the vttablet server to refresh its credentials from Vault.
+
+Note that because of the way connection pools work in vttablet, it might be
+an extended period of time after the credentials are refreshed until they
+start to actually be used, since the current connections in the pools are not
+actively torn down and refreshed (e.g. logged into MySQL again). Using default
+vttablet options, for example, this might take up to 30 minutes, since that is
+the default value for `-queryserver-config-idle-timeout`.  As a result, if
+need to do a "hard" rotation of your app passwords, you will probably want to
+restart your vttablet instances.  However, because of the disruption that this
+would cause, a common strategy for password rotation in this case is to create
+an alternate set of usernames and passwords on the MySQL side, roll that out
+everywhere, then start to recycle your vttablet instances to use the new
+users and password over a long period of time.  Finally, when you are confident
+that the old MySQL users are no longer in use, you can drop or lock them
+on the MySQL side.
 
 ## What happens if Vault goes down?
 
-If Vault is down at the time vtgate is started, it will not be able to fetch
-any credentials.  As a result, vtgate will start, but not have any users
-and passwords configured.  This means that no MySQL clients will be able to
-authenticate to that vtgate instance.  This is undesireable, and you should
-take steps to avoid this scenario.  We suggest:
+If Vault is down at the time vttablet is started, it will not be able to fetch
+any credentials.  As a result, vttablet will start, but not have any valid
+credentials available to log into MySQL. This means that no requests to this
+vttablet instance that results in a MySQL query would succeed.
+This is obviously undesireable, and you should take to avoid this scenario.
+We suggest:
 
-  * Monitoring the vtgate logs for errors related to this.  The error will be
+  * Monitoring the vttablet logs for errors related to this.  The error will be
     something like:  `Error in vault client initialization, will retry:` and
-    then some detail about the type of error.  If an error occurs, vtgate
-    will start retrying against Vault every 10 seconds until it successfully
+    then some detail about the type of error.  If an error occurs, vttablet
+    will start retrying against Vault every second until it successfully
     obtains credentials.
-  * Having a login check running against your vtgate servers that periodically 
-    authenticates using a MySQL user/password. This is good operational
-    practice, even if you are not using Vault.
+  * Note that if you provide the wrong usernames or passwords in the JSON
+    blob in Vault, and vttablet fetches this blob, it will continue retrying
+    using the incorrect password to log into MySQL. Even if you fix the
+    blob in Vault, you will have to either:
+    * wait for the vttablet credentials TTL to expire
+    * or restart vttablet
+    * or send a SIGHUP signal to vttablet to reload the credentials
   * Make sure your Vault infrastructure is configured for HA, potentially
     across multiple datacenters or availability zones, if necessary.  If this is
     not possible, you may want to reconsider if you really want to use Vault to
-    store your vtgate credentials.
+    store your vttablet to MySQL credentials.
   * If you **do** have problems with your Vault servers, **DO NOT** restart your
-    vtgate instances.  If vtgate is already running, and has obtained
-    credentials from the Vault server, it will retain those credentials, even
-    if it cannot refresh them after the configured TTL.  This means that your
-    clients will still be able to authenticate, even though it might not be
-    with the most up-to-date credentials.  This design choice was made in the
-    Vault implementation for vtgate to optimize for availability over
-    authentication credential consistency.
+    vttablet instances.  If vttablet is already running, and has obtained
+    credentials from the Vault server, it will retain those credentials, at
+    least until the next TTL expiration.  If this TTL is sufficiently long,
+    you this **should** (although, depending in the timing, this is not
+    guaranteed) have some time to repair your Vault serving infrastructure
+    until it causes vttablet to be unable to login to MySQL.
 
-## Additional operational guardrails
-
-Note that similar to if Vault is down, if you update the Vault key that
-contains the vtgate credentials to an empty value or invalid JSON, vtgate
-will refuse to overwrite any credentials it previously obtained from Vault.
-You could see messages in the vtgate log like:
-
-```
-Error parsing vtgate Vault auth server config
-```
-or
-```
-vtgate credentials from Vault empty! Not updating previously cached values
-```
-
-You should monitor for these in your logs as well.
 
