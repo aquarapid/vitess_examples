@@ -10,19 +10,18 @@ side.
 Note that the Vault configurations in this document are not
 necessarily recommended for production use. You should ensure that
 your Vault administrator or architect validate and adjust the
-necessary configurations, and ensure that they align with your security and
+necessary configurations; and ensure that they align with your security and
 compliance requirements and operational procedures.
 
 You will probably want to use some type of bootstrapping process
 to obtain the necessary `role_id` and `secret_id` values you
 need for configuring vtgate at vtgate startup time.  Manually
-bootstrapping your vtgate instances, as this document walks you
-through, is not an operationally scalable strategy.
+bootstrapping your vtgate instances, as this document demonstrates, is not an operationally scalable strategy.
 
 Note also that if you use Vault to retrieve your vtgate
 credential information as detailed in this document, your Vault server
-becomes an integral part of you Vitess serving infrastructure. In particular,
-if you Vault server is down at the time you (re)start one or more of your
+becomes an integral part of your Vitess serving infrastructure. In particular,
+if your Vault server is down at the time you (re)start one or more of your
 vtgate instances, you will end up with running vtgate instances that do
 not have authentication information.  As a result, your vtgates will be
 available, but your application will not be able to log into them.  You
@@ -103,12 +102,12 @@ existing unseal keys shares. See "vault operator rekey" for more information.
  ```
  * Be sure to save the `Unseal Key 1` and `Initial Root Token` values. Yours
    will be different from this example.  You will need them later.
-   You should leave the Vault server running in one terminal, and open a new
+   You should leave the Vault server running in one terminal and open a new
    terminal window to use for the rest of this walkthrough.
 
  * Unseal the Vault server.  This is required to store anything in the Vault
-   server, or retrieve tokens/secrets from it.  You will need to provide the 
-   value for `Unseal Key 1` as you obtained above:
+   server, or to retrieve tokens/secrets from it.  You will need to provide the 
+   value for `Unseal Key 1` that you obtained above:
  ```sh
 $ VAULT_CACERT=./vault-cert.pem ./vault operator unseal l/NdRa2WDSF/wLt9upQdPTow1W/cbKqVf2bBF+hkOQk=
 Key             Value
@@ -124,7 +123,7 @@ Cluster Name    vault-cluster-67366070
 Cluster ID      c174754f-d1e4-e88f-9eb5-272edad31d3f
 HA Enabled      false
 ```
- * The Vault server is now unsealed, and you can start configuring it further.
+ * The Vault server is now unsealed and you can start configuring it further.
 
  * Enable the `kv` secrets engine.  Note that you should use your value of
    `Initial Root Token` obtained above as the value for `VAULT_TOKEN`:
@@ -142,21 +141,20 @@ Success! Enabled approle auth method at: approle/
 
  * Create a custom policy called `dbcreds` to allow access to the credentials
    we are going to create soon.  Look through the `dbcreds_policy.hcl` file. It
-   defines the the Vault paths and capabilities allowed by this policy. It has
+   defines the Vault paths and capabilities allowed by this policy. It has
    been scoped to be the minimum needed for use by Vitess.  Now, let's create
    this policy:
   ```sh
 $ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault policy write dbcreds dbcreds_policy.hcl 
 Success! Uploaded policy: dbcreds
   ```
- * This policy is written to allow storing both vtgate credentials as well
-   as MySQL credentials used by vttablet in the Vault server.  We will be
+ * This policy is written to allow storing both vtgate credentials, as well
+   as MySQL credentials, used by vttablet in the Vault server.  We will be
    covering vttablet MySQL credentials in a separate document.
 
  * Next, we are going to upload the actual vtgate credentials to the Vault
    server.  This credential file has the same format as the `file` format 
-   vtgate credentials, as documented here:
-   https://vitess.io/docs/user-guides/configuration-advanced/user-management/#authentication
+   vtgate credentials, as documented [here](https://vitess.io/docs/user-guides/configuration-advanced/user-management/#authentication).
    We have provided an example file, called `vtgatecreds_secret.json`, that just
    looks like this:
  ```sh
@@ -210,7 +208,7 @@ role_id    1ad616e9-7498-b7c3-742a-6ee962489629
  ```
  * Save the `role_id` value.
 
- * Next, obtain a `secret_id` for the approle, we will also need it
+ * Next, obtain a `secret_id` for the approle. We will also need it
 to configure Vitess later:
  ```sh
 $ VAULT_CACERT=./vault-cert.pem VAULT_TOKEN=s.CXte7Z3lOSH601asfcHKr2ra ./vault write auth/approle/role/vitess/secret-id k=v | grep ^secret_id | head -1
@@ -236,9 +234,10 @@ align to this walkthrough example.
 
 You should add the following parameters to your vtgate startup; with the
 example values to align to the Vault server we setup earlier:
+
  * Use Vault to retrieve vtgate auth:  **`-mysql_auth_server_impl vault`**
  * Set a timeout for speaking to the vault server:  **`-mysql_auth_vault_timeout 10s`**
- * Set a kv secret path where you stored the vtgate credentials (see earlier
+ * Set a kv secret path to where you stored the vtgate credentials (see earlier
    in this document):  **`-mysql_auth_vault_path kv/prod/vtgatecreds`**
  * Point to the Vault server.  This also could be a load balancer pointing to
    an HA Vault installation:  **`-mysql_auth_vault_addr https://127.0.0.1:8200`**
@@ -260,6 +259,7 @@ example values to align to the Vault server we setup earlier:
 Additionally, you will need to pass the following parameters to vtgate. Since
 these parameters could change over time, you will probably need a bootstrap
 script to populate or update them when you start vtgate:
+
  * The `role_id` we obtained before from the approle we created:
    **`-mysql_auth_vault_roleid 1ad616e9-7498-b7c3-742a-6ee962489629`**
  * Provide a file to read the `secret_id` we obtained earlier and saved
@@ -282,14 +282,17 @@ I0130 15:22:45.793098  191369 auth_server_vault.go:190] reloadVault(): success. 
 ```
 
 **Annotated:**
+
  * The first three lines reflect that the TLS client cert, LDAP and static
  file auth methods for vtgate are not configured.
  * The fourth line reflects that vtgate has:
+ 
    * successfully connected to Vault
    * successfully authenticated to Vault using the `role_id` and `secret_id`
    * successfully obtained a token
    Implicitly, vtgate also fetched the JSON value for the vtgate user/passwords
    from Vault, or an error would be seen.
+   
  * The last line reflects that, 5 minutes after obtaining the intial token,
  as configured via `-mysql_auth_vault_ttl`, vtgate renewed the initial token
  with the Vault server.  Again, implicitly the JSON value for the vtgate
