@@ -3,8 +3,10 @@
 VTTablet uses a variety of connection pools to connect to MySQLd.
 Most of these can be controlled by vttablet options.  Note that almost 
 all of these pools are **not** fixed size connection pools, and will grow
-on demand to the maximum configured sizes;  and then potentially slowly
-shrink back down again.
+on demand to the maximum configured sizes.  In older Vitess versions,
+some pools would eventually shrink again, but in recent Vitess versions
+a new pool connection is created when and old one reaches its idle
+timeout.  As a result, pools will now effectively never shrink.
 
 One thing to note is that each of these pools do not use unique MySQL
 usernames, so it can be hard from a MySQL processlist to distinguish
@@ -100,7 +102,16 @@ MySQL instance(s).
   * vttablet user flag:  `-db_repl_user`                                 (default 'vt_repl')
     * Used to setup MySQL replication between shard master and replica
       instance types.
-  * vttablet user flag:  `-db_filtered_user`                              (default 'vt_filtered')
+  * vttablet user flag:  `-db_filtered_user`                             (default 'vt_filtered')
     * Used for VReplication to setup filtered binlog stream from a source
       shard MySQL instance.  Also used for actual copying of the upstream
       source table rows in VReplication, if necessary.
+
+## Other relevant pool-related variables
+  * vttablet user limit flag:  `-transaction_limit_per_user`             (default 0.4)
+    * This flag determines the fraction of connections in the
+    **transaction_pool** and **found_rows_pool** that can be used by a single
+    user (the username is passed to vttablet from vtgate).  If you are using
+    a limited set of users, you may want to increase this limit;  or
+    alternatively, disable this limit feature by setting
+    `-transaction_limit_by_username` to `false` (the default is `true`).
