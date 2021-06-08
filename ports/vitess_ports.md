@@ -24,12 +24,16 @@ for the various components:
       * port 16000 + vttablet UID (gRPC)
     * vtctlclient -> vtctld
       * port 15999 (gRPC)
+      * configured via `-server` option
     * vtgate -> topology server
       * Depends on topology server, e.g. for etcd typically port 2379
+      * configured via `-topo_global_server_address`
     * vttablet -> topology server
       * Depends on topology server, e.g. for etcd typically port 2379
+      * configured via `-topo_global_server_address`
     * vtctld -> topology server
       * Depends on topology server, e.g. for etcd typically port 2379
+      * configured via `-topo_global_server_address`
     * administrator using web browser -> vtgate web UI
       * port 15001 (HTTP)
     * administrator using web browser -> vttablet web UI
