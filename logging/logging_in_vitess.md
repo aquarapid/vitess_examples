@@ -60,10 +60,6 @@ Notes:
   * The logfile format is essentially tab-delimited CSV (or TSV). It is
   coveniently awk-able and grep-able.
 
-### Query logging in the web UI
-
-TODO
-
 ### Streaming query logs from the component
 
 The same query log content as via `-log_queries_to_file` can be
@@ -91,6 +87,35 @@ $ timeout 60 curl http://127.0.0.1:xxxx/debug/querylog > /var/tmp/temp_queries.t
   depending on which `vttablet` instance you want to retrieve logs from.
   The web UI port is specified to the `vtgate` and `vttablet` components
   using the `-port` parameter.
+
+
+### Log format layouts
+
+TODO:  text (and json?)
+
+The file/streaming logging output supports two formats:
+ * `text` - the default
+ * `json`
+
+The `text` format is structured as follows for **vtgate** query logs,
+with the previously mentioned tab delimiters:
+ * Method -
+ * Client address and port
+ * VTGate username
+ * Immediate Caller - TODO
+ * Effective Caller - TODO
+ * Query start time - with microsecond precision
+ * Query end time - with microsecond precision
+ * Total query time - in fractional seconds, with microsecond precision
+ * Query planning time - in fractional seconds, with microsecond precision
+ * Query execution time - time taken to execute query, including downstream time to vttablet, etc.  in fractional seconds, with microsecond precision
+ * Query commit time - time the commit phase (or phases if multi-shard) of the query took. in fractional seconds, with microsecond precision
+
+  
+
+### Query logging in the web UI
+
+TODO
 
 ### Additional logging control options
 
