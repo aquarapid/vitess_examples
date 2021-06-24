@@ -138,7 +138,10 @@ def do_gtid_checks(first, second):
             if tablet == master_tablet: continue
             replica_offset = int(first[tablet]['repl_positions'][gtid].split('-')[-1])
             if replica_offset > master_offset:
-                print("Master tablet %s is behind replica tablet %s for server GTID %s" % (master_tablet, tablet, gtid))
+                print("Master tablet %s is behind replica tablet %s for GTIDs %s:%s-%s" % (master_tablet, tablet, gtid, master_offset+1, replica_offset))
+                print("\nTo inject empty TXes execute something like this (after verifying):")
+                for offset in range(master_offset+1, replica_offset+1):
+                    print("set gtid_next='%s:%s'; begin; commit;" % (gtid, offset))
                 sys.exit(6)
 
 
