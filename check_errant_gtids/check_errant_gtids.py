@@ -153,25 +153,27 @@ if __name__ == "__main__":
     vtctld_spec = sys.argv[1]
     keyspace    = sys.argv[2]
 
-    rc, _, stdout = run_command("vtctlclient -action_timeout=5s -server %s FindAllShardsInKeyspace %s" % (vtctld_spec, keyspace), shell=True)
+    rc, err, stdout = run_command("vtctlclient -action_timeout=5s -server %s FindAllShardsInKeyspace %s" % (vtctld_spec, keyspace), shell=True)
     if rc:
         print("Probable timeout enumerating all shards in keyspace %s, bailing" % keyspace)
+        print("Error was:  ", err)
         sys.exit(10)
 
 
     shards = json.loads(stdout).keys()
     for shard in shards:
-        rc, _, first_run_output = run_command("vtctlclient -action_timeout=5s -server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
+        rc, err, first_run_output = run_command("vtctlclient -action_timeout=5s -server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
         if rc:
             print("Probable timeout fetching ShardReplicationPositions for %s/%s, bailing" % (keyspace, shard))
+            print("Error was:  ", err)
             sys.exit(11)
         time.sleep(1)
-        rc, _, second_run_output = run_command("vtctlclient -action_timeout=5s -server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
+        rc, err, second_run_output = run_command("vtctlclient -action_timeout=5s -server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
         if rc:
             print("Probable timeout fetching ShardReplicationPositions for %s/%s, bailing" % (keyspace, shard))
+            print("Error was:  ", err)
             sys.exit(12)
         determine_errant_gtid(first_run_output, second_run_output)
 
 # TODO:
-#   * Distinguish between timeout and other issues (e.g. wrong keyspace)
 #   * Add tests
