@@ -821,6 +821,30 @@ to connect via TLS to `etcd`:
 As is necessary for your design/architecture, add one or more of the above
 options to your vtgate, vttablet and vtctld instances.
 
+### Configuring etcd for secure connections
+
+We will just mention the basic flags here for getting `etcd` to accept
+encrypted client connections.  We will not cover the flags to make sure
+that communication between `etcd` cluster members (peers) are encrypted.
+
+Flags:
+  * `--listen-client-urls`: specify an `https://` host and port prefix
+  * `--advertise-client-urls`: specify an `https://` host and port prefix
+  * `--cert-file`:  Point to to a server cert PEM file
+  * `--key-file`:  Point to to a server key PEM file
+  * (optional) `--cipher-suites`:  Can be used to limit the cipher suites the
+  etc server will negotiate (e.g. `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`
+  is a popular combination).  Note that the Vitess client components will
+  negotiate any of the standard golang TLS client cipher suites (which
+  can vary somewhat depending on which golang versison Vitess was compiled
+  with, and what libraries are available on the platform).  It is not
+  possible to limit the cipher suites from the etcd client (i.e. Vitess)
+  components.
+
+It is also possible to configure `etcd` to require/verify client certificates
+from the clients; for that use the `--trusted-ca-file` option to point
+to the PEM CA cert that the client certs are signed with.
+
 ### Configuring ZooKeeper for secure connections
 
 We will not cover setting up `Zookeeper` with certificates in this guide.

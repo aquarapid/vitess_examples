@@ -60,18 +60,18 @@ vitess@0f2514ecc017:/vt/local$ cat /sys/fs/cgroup/memory/memory.usage_in_bytes
 1439567872
 ```
 
-Note that this default `docker/local` example setup, which starts a single
-shard with 3 tablets (i.e. 3 MySQLd instances), consumes about 1.4 GB of
-memory. Depending on your needs (e.g. running testing with the `docker/lcoal`
-container), this might be excessive, especially if you want to launch
-a multi-shard setup with many more tablets.
+Note from the cgroup output that this default `docker/local` example setup,
+which starts a single shard with 3 tablets (i.e. 3 MySQLd instances), consumes
+about 1.4 GB of memory. Depending on your needs (e.g. running testing with
+the `docker/local` container), this might be excessive, especially if you
+want to launch a multi-shard setup with many more tablets.
 
 The bulk of the memory usage is from the actual MySQLd instance, and can be
-reduced quite a bit by adjusting the MySQL `my.cnf` parameters. To achieve
+reduced by adjusting the MySQL `my.cnf` parameters. To achieve
 this, we are going to create a "supplemental" `my.cnf` configuration file
 for the MySQLd instances, and pass it into the Docker container for Vitess`
 mysqlctl to apply when initializing the MySQLd instances.  These
-parameters are not meant for real-world usage, since they switch
+parameters are not meant for any real-world usage, since they switch
 of MySQL performance schema and reduce the size of the default buffers.
 Note the `-v` and `-e` parameters passed to the `docker run` command:
 
