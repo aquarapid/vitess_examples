@@ -1,6 +1,5 @@
-By default, when launching Vitess in a Docker container with MySQL 8.0
-(or later versions of 5.7), the default memory consumption might be
-rather high.
+By default, when launching Vitess in a Docker container the default memory
+consumption might be rather high.
 
 This can be seen from the following example:
 
@@ -62,7 +61,7 @@ vitess@0f2514ecc017:/vt/local$ cat /sys/fs/cgroup/memory/memory.usage_in_bytes
 
 Note from the cgroup output that this default `docker/local` example setup,
 which starts a single shard with 3 tablets (i.e. 3 MySQLd instances), consumes
-about 1.4 GB of memory. Depending on your needs (e.g. running testing with
+about 1.4 GB of memory.  Depending on your needs (e.g. running testing with
 the `docker/local` container), this might be excessive, especially if you
 want to launch a multi-shard setup with many more tablets.
 
