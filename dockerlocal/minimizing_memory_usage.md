@@ -68,7 +68,7 @@ want to launch a multi-shard setup with many more tablets.
 The bulk of the memory usage is from the actual MySQLd instance, and can be
 reduced by adjusting the MySQL `my.cnf` parameters. To achieve
 this, we are going to create a "supplemental" `my.cnf` configuration file
-for the MySQLd instances, and pass it into the Docker container for Vitess`
+for the MySQLd instances, and pass it into the Docker container for Vitess\`
 mysqlctl to apply when initializing the MySQLd instances.  These
 parameters are not meant for any real-world usage, since they switch
 of MySQL performance schema and reduce the size of the default buffers.
