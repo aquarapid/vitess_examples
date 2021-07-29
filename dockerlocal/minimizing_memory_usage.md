@@ -65,6 +65,9 @@ about 1.4 GB of memory.  Depending on your needs (e.g. running testing with
 the `docker/local` container), this might be excessive, especially if you
 want to launch a multi-shard setup with many more tablets.
 
+
+## Adjusting MySQLd parameters to reduce memory usage
+
 The bulk of the memory usage is from the actual MySQLd instance, and can be
 reduced by adjusting the MySQL `my.cnf` parameters. To achieve
 this, we are going to create a "supplemental" `my.cnf` configuration file
@@ -143,3 +146,26 @@ version used for the `docker/local` image (at the time of writing, MySQL
 (currently `8.0.23`), the difference is a bit less dramatic (about
 1.05 GB vs 1.6 GB), since MySQL 8.0 just has a larger base memory footprint.
 
+## Additional ways to reduce memory usage
+
+### VTTablet
+
+In default configuration, vttablet will use up to 32 MB of memory to cache
+query plans. Although this memory is not pre-allocated, we can avoid the
+potential use of it by disabling the plan cache by setting it to size 0 by
+using the vttablet option:
+
+```
+-queryserver-config-query-cache-size 0
+```
+
+### VTGate
+
+In default configuration, vtgate will use up to 32 MB of memory to cache
+query plans. Although this memory is not pre-allocated, we can avoid the
+potential use of it by disabling the plan cache by setting it to size 0 by
+using the vtgate option:
+
+```
+-gate_query_cache_size 0
+```
