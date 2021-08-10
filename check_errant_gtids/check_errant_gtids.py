@@ -99,7 +99,7 @@ def check_permutation(tablet1_repl_positions, tablet2_repl_positions):
 
 def get_master(first):
     for tablet in first:
-        if first[tablet]['tablet_type'] == 'master':
+        if first[tablet]['tablet_type'] == 'master' or first[tablet]['tablet_type'] == 'primary':
             return tablet
     return None
 
