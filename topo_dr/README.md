@@ -45,6 +45,7 @@ zone1-0000000102 keyspace1 0 replica 192.168.0.212:15102 192.168.0.212:17102 [] 
 $ vtctlclient -server 192.168.0.212:15999 ApplyVSchema -vschema_file `pwd`/vschema.json keyspace1
   ```
   * Re-add any routing rules with `vtctlclient ApplyRoutingRules` (if necessary)
+  * Re-add any cell aliases with `vtctlclient AddCellsAlias` (if necessary)
   * Restart vtgates; to clear out old healthcheck info (potentially optional)
   * Run TER on each keyspace/shard combo to let Vitess now which of
     the tablets were the primaries before you restarted, e.g.:
