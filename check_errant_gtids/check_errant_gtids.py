@@ -97,7 +97,7 @@ def check_permutation(tablet1_repl_positions, tablet2_repl_positions):
             return False
     return True
 
-def get_master(first):
+def get_primary(first):
     for tablet in first:
         if first[tablet]['tablet_type'] == 'master' or first[tablet]['tablet_type'] == 'primary':
             return tablet
@@ -119,7 +119,7 @@ def do_gtid_checks(first, second):
             sys.exit(5)
 
     # Now, check for cases that did not move between runs, where the
-    #  replica is ahead of the master
+    #  replica is ahead of the primary
     combos_to_examine = []
     for tablet in first:
         for gtid in first[tablet]['repl_positions']:
@@ -131,16 +131,16 @@ def do_gtid_checks(first, second):
             combos_to_examine.append(gtid)
     combos_to_examine = list(set(combos_to_examine))
 
-    master_tablet = get_master(first)
+    primary_tablet = get_primary(first)
     for gtid in combos_to_examine:
-        master_offset = int(first[master_tablet]['repl_positions'][gtid].split('-')[-1])
+        primary_offset = int(first[primary_tablet]['repl_positions'][gtid].split('-')[-1])
         for tablet in first:
-            if tablet == master_tablet: continue
+            if tablet == primary_tablet: continue
             replica_offset = int(first[tablet]['repl_positions'][gtid].split('-')[-1])
-            if replica_offset > master_offset:
-                print("Master tablet %s is behind replica tablet %s for GTIDs %s:%s-%s" % (master_tablet, tablet, gtid, master_offset+1, replica_offset))
+            if replica_offset > primary_offset:
+                print("Primary tablet %s is behind replica tablet %s for GTIDs %s:%s-%s" % (primary_tablet, tablet, gtid, primary_offset+1, replica_offset))
                 print("\nTo inject empty TXes execute something like this (after verifying):")
-                for offset in range(master_offset+1, replica_offset+1):
+                for offset in range(primary_offset+1, replica_offset+1):
                     print("set gtid_next='%s:%s'; begin; commit;" % (gtid, offset))
                 sys.exit(6)
 
