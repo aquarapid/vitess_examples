@@ -54,3 +54,33 @@ application access to `vtgate` relatively trivial then:
 We can, of course, rotate the passwords for multiple users at the same time
 in the same fashion. 
 
+
+## `vttablet` password rotation
+
+Password rotation for `vttablet`, i.e. rotation of the passwords used by
+`vttablet` to connect to the underlying MySQL server(s) has to follow a more
+convential route than `vtgate` password rotation, since we are limited
+by the authentication features of MySQL Server.  The following strategy,
+based on the "dual users" pattern, has been used by Vitess users with success
+without having to use a "stop-the-world" strategy:
+
+ * To start with, vttablet uses a set of MySQL users, say `A`, `B` and `C`
+ with respective passwords `X`, `Y` and `Z`.
+ * We now want to change the passwords for all these users. To achieve this,
+ we create **new** users with the same permissions/grants as `A`, `B` and `C`.
+ These users are `AA`, `BB` and `CC`.  We assign our new/rotated passwords
+ to these users, say `XX`, `YY` and `ZZ`.
+ * We validate manually or otherwise that the new users are:
+   * Active
+   * Has the new passwords we want
+   * Have the correct permissions
+ * Now, we update the vttablet configurations to use the new usernames
+ (`AA`, `BB` and `CC`) and passwords (`XX`, `YY` and `ZZ`).
+ * During a maintainance window, we restart the vttablets one-by-one,
+ validating that they are using the new usernames, and are still functioning
+ as before.  Depending on your situation, you may also perform planned
+ reparents as you restart primary shards, to minimize write unavailability.
+ * After the restarts are complete, Vitess is now using the new set of
+ users and passwords, and your password rotation is complete. You can
+ now validate no clients are connecting to MySQL server using the old
+ usernames anymore, and then delete the users from MySQL.
