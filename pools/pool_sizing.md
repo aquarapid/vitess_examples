@@ -144,4 +144,4 @@ Formula for approximate maximum MySQL connections per vttablet instance:
 ```
 
 Note that most servers will not use this many connections, since most
-workloads do not excercise all the pools.
+workloads do not exercise all the pools.
