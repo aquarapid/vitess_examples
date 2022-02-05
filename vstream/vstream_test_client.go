@@ -28,8 +28,7 @@ func main() {
 	tabletType := flag.String("tablet_type", "", "master/replica/rdonly")
 	pos := flag.String("pos", "", "JSON structure describing vtgtids to start from")
 	flag.Parse()
-	//if *vtgate == "" || *keyspace == "" || *tabletType == "" || *pos == "" {
-	if *vtgate == "" || *tabletType == "" || *pos == "" {
+	if *vtgate == "" || *keyspace == "" || *tabletType == "" || *pos == "" {
 		fmt.Printf("Sample usage: go run vstream_test_client.go -vtgate=localhost:15991 -keyspace=commerce -tablet_type=master -pos='[ {\"shard\":\"x\", \"gtid\":\"xxxx\"} ]'\n")
 		return
 	}
@@ -38,7 +37,7 @@ func main() {
 	json.Unmarshal([]byte(*pos), &shardgtids)
 
 	for _, shardgtid := range shardgtids {
-		fmt.Printf("debug shardgtid: %v\n", shardgtid)
+		//fmt.Printf("debug shardgtid: %v\n", shardgtid)
 		shardgtid.Keyspace = *keyspace
 	}
 
@@ -140,7 +139,7 @@ func printRowEvents(vgtid *binlogdatapb.VGtid, rowEvents []*binlogdatapb.RowEven
 		printQueryResult(os.Stdout, result)
 	}
 	fmt.Printf("VGTID after event:  %v\n", vgtid)
-	fmt.Printf("length shardgtids:  %v\n", len(vgtid.ShardGtids))
+	//fmt.Printf("length shardgtids:  %v\n", len(vgtid.ShardGtids))
 }
 
 // printQueryResult will pretty-print a QueryResult to the logger.
