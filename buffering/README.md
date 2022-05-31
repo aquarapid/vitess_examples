@@ -3,7 +3,7 @@
 VTGate in Vitess supports the **buffering** of queries in certain situations.
 The original intention of this feature was to **reduce** (but not necessarily
 eliminate) downtime during planned failovers (a.k.a. PRS -
-PlannedReparentShard operations).  It has been extended to provide buffering
+`PlannedReparentShard` operations).  It has been extended to provide buffering
 in some additional (planned) failover situations, e.g. during resharding.
 
 Note that buffering is not intended for, or active during, unplanned failovers
@@ -12,7 +12,7 @@ or other unplanned issues with a `PRIMARY` tablet during normal operations.
 As you may imagine if you think about the problem, buffering can be
 somewhat involved, and there are a number of tricky edge cases. We will
 discuss this in the context of an application's experience, starting with
-the simplest case, that of buffering during a PRS (PlannedReparentShard)
+the simplest case, that of buffering during a PRS (`PlannedReparentShard`)
 operation.
 
 ## VTGate parameters to enable buffering

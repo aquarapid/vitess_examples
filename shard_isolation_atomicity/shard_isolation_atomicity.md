@@ -33,28 +33,28 @@ of MySQL.
 ## Cross-shard isolation
 
 Because cross-shard writes might not be completely atomic (see the next
-section), cross-shard reads (even if they all go to the master) might not
-display **isolation**, i.e. they may show partial
-results for in-flight cross-shard write operations.  A simple example may be
-that the all the rows for a multi-valued insert might not become visible across
-all shards at the same time.
+section), cross-shard reads (even if they all go to the primary) might not
+display **isolation**, i.e. they may show partial results for in-flight
+cross-shard write operations.  A simple example of this is that the all the
+rows for a multi-valued insert to a table might not become visible across
+all shards at the same time to a cross-shard read from the same table.
 
 This is typically not a big issue for most applications, since so-called
 read-after-write consistency is retained,  e.g.:
   * if you performed a multi-value insert across multiple shards,
   * **and** it completed sucessfully
-  * **then** if you issue a multi-shard (master) read after this, you should see
+  * **then** if you issue a multi-shard (primary) read after this, you should see
   the results of what you wrote across all shards (assuming nothing else
   deleted/updated those rows in the meanwhile)
 
-Note that if you perform replica or rdonly reads instead of master reads
+Note that if you perform replica or rdonly reads instead of primary reads
 (using the `@replica` or `@rdonly` Vitess dbname syntax extension), you
-will face the same issues you would if you read from a single MySQL replica
-instance. Accordingly, writes might not become visibile for an extended
-period of time, depending on **replica lag**.  That being said, since Vitess
-helps you to keep your individual master instances smaller, replica lag
-should be less of an issue than it would be with a unsharded large MySQL
-setup.
+will face the same replica skew issues you would if you read from a single
+MySQL replica instance. Accordingly, writes might not become visibile for
+an extended period of time, depending on **replica lag**.  That being said,
+since Vitess helps you to keep your individual primary instances smaller,
+replica lag should be less of an issue than it would be with a unsharded
+large MySQL database.
 
 ## Cross-shard atomicity
 
@@ -71,11 +71,11 @@ might not become visible across all shards in the same instant, Vitess does try
 to ensure that write failures on a subset of the shards are:
   * rolled back
   * or if they cannot be rolled back, the application receives a reasonable
-  error to that effect.
+  notification to that effect in the form of an appropriate error.
 
 As an example, imagine an insert of 20 rows into a sharded table with 4
-shards. There are many ways for Vitess to take an insert like this and perform
-the inserts to the backend shards:
+shards. There are multiple ways for Vitess to take an insert like this and
+perform the inserts to the backend shards:
 
 ### Method 1:  The naive way
 
@@ -188,7 +188,7 @@ By default, Vitess employs a default setting for `transaction_mode` of
 **MULTI** (`set transaction_mode = 'multi'`).  This mode is a tradeoff between
 atomicity, isolation and performance, where Vitess will attempt to minimize
 (but not guarantee) the chances of a partial cross-shard update.  What Vitess
-does in a case like this is:
+does in this case is:
 
   * Phase 1:  Open transactions to each of the shards.  If anything fails
   during this phase, nothing has been written, the application sees an
@@ -203,7 +203,7 @@ does in a case like this is:
   one of the shards.  At this point an error would be returned to the
   application, **but the inserts on shards committed before the failing shard
   cannot be rolled back**.  As a result the atomicity of the insert is broken,
-  and now clients will see (possibly permanently) inconsistent results. It is
+  and now clients will see permanently inconsistent results. It is
   left up to the client to repair the possible inconsistency, potentially with
   a retry, or some more elaborate mechanism.
 

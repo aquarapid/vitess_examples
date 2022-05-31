@@ -5,8 +5,13 @@ We will cover two scenarios:
   * Running the `vtcombo` binary directly
   * Using a docker container to run `vtcombo`
 We assume that the MySQL server is already running locally (`127.0.0.1`) on
-port 3306, the instance has been setup with the super/dba user `root` and
+port `3306`, the instance has been setup with the super/dba user `root` and
 the password `password`.
+
+Note that the `vtcombo` invocations presented here mainly rely on Vitess
+component default parameters, and you may want to customize them depending
+on which Vitess features you are using, and which parameters you have
+customized.
 
 
 ## Running `vtcombo` directly
@@ -68,7 +73,36 @@ See the `launch_standalone.sh` script for the above.
 See the `launch_docker.sh` file.  Note that this uses docker "host" networking
 to allow the container to connect to a MySQL instance you have running
 locally outside of the Vitess docker container.  It will also expose all the 
-vtcombo ports on the local instance (`127.0.0.1`).  Accordingly, you will not
+`vtcombo` ports on the local instance (`127.0.0.1`).  Accordingly, you will not
 be able to run multiple copies of the container at the same time without
 making some changes (e.g. each container will have to listen on different
-ports)
+ports).
+
+Note that to launch `vtcombo` inside the container, the script
+`launch_standalone_docker.sh` is used, if you want to make changes to
+the `vtcombo` parameters and you are using docker, you will have to edit
+that script.
+
+
+## General notes
+
+`vtcombo` combines multiple Vitess components into a single process:
+  * A topo (topology) server.  In this case a "fake" one, not a real one
+  you would use for production (e.g. `etcd`).  This "topology" server
+  is populated by the information you provide in the `topo` file (which
+  is provided to `vtcombo` via the `-proto_topo` parameter).
+  * `vtgate`
+  * `vttablet`
+  * `vtctld`
+It exposes the `vtctld` web UI on port `55000` in the above example.
+It does not provide/expose the `vtgate` or `vttablet` web UIs.
+
+All the gRPC functions for both `vtctld` and `vtgate` are exposed on the
+single gRPC port of `55001` in the above example.  You can add exposing
+the `vttablet` gRPC functions by editing the `-service-map` parameter.
+
+Lastly, once `vtcombo` is up and running successfully, you should be able
+to access Vitess (`vtgate`) via port `55306` on `127.0.0.1` using a
+MySQL client.  Note that the authentication implementation is configured
+as `none`;  meaning you can connect with any username/password combination
+and will be let in.
