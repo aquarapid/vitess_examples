@@ -1,0 +1,15 @@
+keyspaces {
+  name: "unsharded"
+  shards {
+    name: "0"
+  }
+  replica_count: 0
+}
+
+keyspaces {
+  name: "sharded"
+  shards {
+    name: "0"
+  }
+}
+
