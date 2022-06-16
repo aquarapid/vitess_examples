@@ -117,9 +117,23 @@ with the previously mentioned tab delimiters:
 
 For **vttablet** query logs, the `text` format is structured as follows,
 again with tab delimiters:
- * Method - gRPC method that resulted in this log line, almost always `Execute`
+ * Method - gRPC method that resulted in this log line, e.g.:
+   * `Execute`
+   * `StreamExecute` - if you are using `set workload=olap`
+   * `Begin`
+   * `Commit`
+   * etc.
  * CallInfo - gRPC call info; typically the gRPC call source IP/port (vtgate
- source IP/port for the gRPC client)
+ source IP/port for the gRPC client), plus the `vttablet` gRPC method URI,
+ e.g.:
+   * `/queryservice.Query/Execute`
+   * `/queryservice.Query/StreamExecute`
+   * `/queryservice.Query/Begin`
+   * `/queryservice.Query/Commit`
+   * `/queryservice.Query/BeginStreamExecute`
+   * `/queryservice.Query/Commit`
+   * `/queryservice.Query/Rollback`
+   * etc.
  * Username - TODO (always `gRPC`?)
  * Immediate Caller - `vtgate` caller context sent from the gRPC client
  (`vtgate`).  This will typically be the `vtgate` MySQL user used by the
