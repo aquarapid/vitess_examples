@@ -102,18 +102,47 @@ The file/streaming logging output supports two formats, specified via the
  * `json`
 
 The `text` format is structured as follows for **vtgate** query logs,
-with the previously mentioned tab delimiters:
- * Method -
+with the previously mentioned tab delimiters.  This list assumes that
+you do not any of the log/error redaction switches enabled:
+ * Method - which vtgate gRPC method was associated with this query.  For
+ queries coming into `vtgate` via the MySQL protocol, this will usually be
+ `Execute`.  Possible values:
+   * `Execute`
+   * `ExecuteBatch`
+   * `Prepare`
+   * `StreamExecute`
+   * `VStream`
+   * `CloseSession`
+   * `ResolveTransaction`
  * Client address and port
  * VTGate username
  * Immediate Caller - TODO
  * Effective Caller - TODO
- * Query start time (in `vtgate`)  - with microsecond precision
- * Query end time (in `vtgate`) - with microsecond precision
- * Total query time (since entering `vtgate` to completion) - in fractional seconds, with microsecond precision
+ * Query start time & date (in `vtgate`)  - with microsecond precision
+ * Query end time & date (in `vtgate`) - with microsecond precision
+ * Total query time (from entering `vtgate` to completion) - in fractional
+ seconds, with microsecond precision
  * Query planning time - in fractional seconds, with microsecond precision
- * Query execution time - time taken to execute query, including downstream time to vttablet, etc.  in fractional seconds, with microsecond precision
- * Query commit time - time the commit phase (or phases if multi-shard) of the query took. in fractional seconds, with microsecond precision
+ * Query execution time - time taken to execute query, including downstream
+ time to vttablet, etc.  in fractional seconds, with microsecond precision
+ * Query commit time - time the commit phase (or phases if multi-shard) of
+ the query took. in fractional seconds, with microsecond precision
+ * Query type - Type of SQL query this log line corresponds to, e.g. `DDL`,
+ `INSERT`, `SELECT`, `DELETE`, etc.
+ * Query - Actual query text (usually normalized with bind variables)
+ * Bind variable map - Bind variables for the normalized query, if any.
+ If there are no bind variables, an empty map is reported as `map[]`
+ * Number of shard queries - How many queries were executed to underlying
+ shards to perform this vtgate query.
+ * Rows affected - Number of rows affected by the query, e.g. number of rows
+ inserted, number of rows updated, number of rows deleted.
+ * Error detail string - if any.  This should mirror the error detail sent
+ to the `vtgate` client.
+ * Keyspace - Vitess keyspace the query was resolved to
+ * Table - Table(s) the query was resolved to
+ * Tablet Type - The tablet type the query was directed to (e.g.
+ `PRIMARY`, `REPLICA`, `RDONLY`)
+
 
 For **vttablet** query logs, the `text` format is structured as follows,
 again with tab delimiters:
@@ -139,9 +168,9 @@ again with tab delimiters:
  (`vtgate`).  This will typically be the `vtgate` MySQL user used by the
  application if using the MySQL protocol.
  * Effective Caller - TODO
- * Query start time (in `vttablet`) - with microsecond precision
- * Query end time - (in `vttablet`) - kwith microsecond precision
- * Total query time (since entering `vttablet`, until returning last byte to `vtgate`) - in fractional seconds, with microsecond precision
+ * Query start time & date (in `vttablet`) - with microsecond precision
+ * Query end time & date (in `vttablet`) - with microsecond precision
+ * Total query time (from entering `vttablet`, until returning last byte to `vtgate`) - in fractional seconds, with microsecond precision
  * Plan Type - The type of query this was classified as by the `vttablet` planbuilder.
  This is a large set, but the common values are strings like:
    * `Select`
@@ -152,9 +181,13 @@ again with tab delimiters:
  * Original SQL - Original SQL as received by `vttablet`; note that this is
  **not** the same as the original SQL sent by the application to `vtgate`;
  since the SQL has already potentially been rewritten and/or expanded by
- `vtgate`.
- * BindVars - Map of bind variables and values
- * Queries - TODO
+ `vtgate`. It will typically be normalized with bind variables, even if it
+ was not a prepared statement when sent to `vtgate`.
+ * Bind variable map - Bind variables for the normalized query, if any.
+ If there are no bind variables, an empty map is reported as `map[]`
+ * Queries - What source was used to supply results for the query.
+ Usually `mysql`, but can be `consolidator` if the query result came
+ from the query consolidator.
  * Rewritten SQL - SQL after being rewritten by `vttablet`, i.e. the SQL
  that `vttablet` attempted to execute.
  * Query Sources - indicator of the source of the `vttablet` query. Typical
@@ -165,9 +198,13 @@ again with tab delimiters:
  `vttablet` <-> MySQL query had to wait for a pool connection. This is
  always non-zero, but unless the connection pool has no free connections,
  should be relatively low.
- * Rows Affected
- * Transaction ID - if applicable
- * Response Size - in bytes
+ * Rows affected - Number of rows affected by the query, e.g. number of rows
+ inserted, number of rows updated, number of rows deleted.
+ * Transaction ID - if applicable.  Can be used to correlate queries from
+ the same transaction in the log.
+ * Response Size - in bytes. This is the response size on the vttablet Golang
+ size, and does not take into account protocol encoding to protobuf for gRPC
+ or any gRPC overhead, which would increase the response size.
  * Error - if any
 
   
@@ -180,6 +217,8 @@ TODO
 
 TODO:
  * `-redact-debug-ui-queries`
+ * `-vtgate-config-terse-errors`
+ * `-queryserver-config-terse-errors`
  * `-querylog-filter-tag`
  * `-log_queries`: syslog - does this still work?
  * `-sql-max-length-ui`
