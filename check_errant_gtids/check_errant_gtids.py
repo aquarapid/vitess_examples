@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# pylint: disable=fixme, line-too-long, invalid-name, multiple-statements
+# pylint: disable=fixme, line-too-long, invalid-name, multiple-statements, consider-using-f-string, missing-module-docstring, missing-function-docstring
 #
 # Tool to check for the presence of errant GTIDs in a Vitess keyspace
 #
@@ -69,7 +69,7 @@ def parse_positions(position_str):
         d[gtid] = offset_range
     return d
 
-def determine_errant_gtid(first_run, second_run):
+def determine_errant_gtid(keyspace_shard, first_run, second_run):
     ''' Determine from two runs of ShardReplicationPositions for a
         keyspace/shard if there is likely to be an errant GTID'''
     first = {}
@@ -89,7 +89,7 @@ def determine_errant_gtid(first_run, second_run):
         second[tablet]["repl_positions"] = parse_positions(repl_positions)
         second[tablet]["lag"] = int(lag)
 
-    do_gtid_checks(first, second)
+    do_gtid_checks(keyspace_shard, first, second)
 
 def check_permutation(tablet1_repl_positions, tablet2_repl_positions):
     for server_gtid in tablet1_repl_positions:
@@ -103,19 +103,19 @@ def get_primary(first):
             return tablet
     return None
 
-def do_gtid_checks(first, second):
+def do_gtid_checks(keyspace_shard, first, second):
     # First, check for server GTIDs not present everywhere
     for perm in permutations(first.keys(), 2):
         first_tablet_positions = first[perm[0]]['repl_positions']
         second_tablet_positions = first[perm[1]]['repl_positions']
         if not check_permutation(first_tablet_positions, second_tablet_positions):
-            print("Tablet %s and %s have non-overlapping GTID positions:\n%s" % (perm[0], perm[1], json.dumps(first, indent=4)))
+            print("Tablet %s and %s for shard %s have non-overlapping GTID positions:\n%s" % (perm[0], perm[1], keyspace_shard, json.dumps(first, indent=4)))
             sys.exit(4)
     for perm in permutations(second.keys(), 2):
         first_tablet_positions = second[perm[0]]['repl_positions']
         second_tablet_positions = second[perm[1]]['repl_positions']
         if not check_permutation(first_tablet_positions, second_tablet_positions):
-            print("Tablet %s and %s have non-overlapping GTID positions:\n%s" % (perm[0], perm[1], json.dumps(second, indent=4)))
+            print("Tablet %s and %s for shard %s have non-overlapping GTID positions:\n%s" % (perm[0], perm[1], keyspace_shard, json.dumps(second, indent=4)))
             sys.exit(5)
 
     # Now, check for cases that did not move between runs, where the
@@ -138,7 +138,7 @@ def do_gtid_checks(first, second):
             if tablet == primary_tablet: continue
             replica_offset = int(first[tablet]['repl_positions'][gtid].split('-')[-1])
             if replica_offset > primary_offset:
-                print("Primary tablet %s is behind replica tablet %s for GTIDs %s:%s-%s" % (primary_tablet, tablet, gtid, primary_offset+1, replica_offset))
+                print("Primary tablet %s for shard %s is behind replica tablet %s for GTIDs %s:%s-%s" % (primary_tablet, keyspace_shard, tablet, gtid, primary_offset+1, replica_offset))
                 print("\nTo inject empty TXes execute something like this (after verifying):")
                 for offset in range(primary_offset+1, replica_offset+1):
                     print("set gtid_next='%s:%s'; begin; commit;" % (gtid, offset))
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     vtctld_spec = sys.argv[1]
     keyspace    = sys.argv[2]
 
-    rc, err, stdout = run_command("vtctlclient -action_timeout=5s -server %s FindAllShardsInKeyspace %s" % (vtctld_spec, keyspace), shell=True)
+    rc, err, stdout = run_command("vtctlclient --action_timeout=5s --server %s FindAllShardsInKeyspace %s" % (vtctld_spec, keyspace), shell=True)
     if rc:
         print("Probable timeout enumerating all shards in keyspace %s, bailing" % keyspace)
         print("Error was:  ", err)
@@ -165,18 +165,19 @@ if __name__ == "__main__":
 
     shards = json.loads(stdout).keys()
     for shard in shards:
-        rc, err, first_run_output = run_command("vtctlclient -action_timeout=5s -server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
+        rc, err, first_run_output = run_command("vtctlclient --action_timeout=5s --server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
         if rc:
             print("Probable timeout fetching ShardReplicationPositions for %s/%s, bailing" % (keyspace, shard))
             print("Error was:  ", err)
             sys.exit(11)
         time.sleep(1)
-        rc, err, second_run_output = run_command("vtctlclient -action_timeout=5s -server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
+        rc, err, second_run_output = run_command("vtctlclient --action_timeout=5s --server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
         if rc:
             print("Probable timeout fetching ShardReplicationPositions for %s/%s, bailing" % (keyspace, shard))
             print("Error was:  ", err)
             sys.exit(12)
-        determine_errant_gtid(first_run_output, second_run_output)
+        determine_errant_gtid("%s/%s" % (keyspace, shard), first_run_output, second_run_output)
 
 # TODO:
 #   * Add tests
+#   * Migrate to using vtctldclient, or calling vtctld gRPC directly
