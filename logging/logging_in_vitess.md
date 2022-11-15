@@ -143,6 +143,12 @@ you do not any of the log/error redaction switches enabled:
  * Tablet Type - The tablet type the query was directed to (e.g.
  `PRIMARY`, `REPLICA`, `RDONLY`)
 
+**Present in vtgate log output in newer Vitess versions**
+ * Transaction session ID - opaque string
+ * Cached plan - boolean (`true` or `false`) to indicate if plan was cached in vtgate
+ * Tables used - List of tables involved in the query
+ * Active keyspace - In the context of which keyspace was the query performed
+
 
 For **vttablet** query logs, the `text` format is structured as follows,
 again with tab delimiters:
