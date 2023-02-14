@@ -648,7 +648,7 @@ options above are activated, you will need to add the following additional
 vttablet options:
 
   ```
-  -tablet_grpc_server_name vttablet1 -tablet_grpc_ca /home/user/config/ca.crt 
+  -binlog_player_grpc_server_name vttablet1 -binlog_player_grpc_ca /home/user/config/ca.crt
   ```
 
   Since each vttablet instance may need to talk to more than one other
@@ -660,8 +660,20 @@ vttablet options:
     but might not conform to your compliance requirements.
   * or, ensure each vttablet server certificate common name or IP SAN matches
     the DNS name or IP it it accessed via. In this case, you can omit
-    the use of the `-tablet_grpc_server_name` above for vttablet, and also
-    for vtgate.
+    the use of the `-binlog_player_grpc_server_name` above for vttablet, and
+    also for vtgate.
+
+  Finally, you will need the matching `cert` and `key` parameters on each
+  vttablet that will need to function as a vreplication source (in theory,
+  this could be **any** vttablet):
+
+  ```
+  -binlog_player_grpc_key /home/user/config/vttablet1.key -binlog_player_grpc_cert /home/user/config/vttablet1.crt
+  ```
+
+  Note that we are re-using the same key/cert material as for the main vtgate
+  to vttablet data path here.  You may, depending on your situation, want to
+  use a different set of key/cert material.
   
 ### vtctld to vttablet
 
