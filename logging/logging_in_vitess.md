@@ -191,13 +191,14 @@ again with tab delimiters:
  was not a prepared statement when sent to `vtgate`.
  * Bind variable map - Bind variables for the normalized query, if any.
  If there are no bind variables, an empty map is reported as `map[]`
- * Queries - What source was used to supply results for the query.
- Usually `mysql`, but can be `consolidator` if the query result came
- from the query consolidator.
+ * Number of queries - Number of queries in the rewritten SQL for the
+ incoming query.
  * Rewritten SQL - SQL after being rewritten by `vttablet`, i.e. the SQL
  that `vttablet` attempted to execute.
- * Query Sources - indicator of the source of the `vttablet` query. Typical
- values: `mysql` (meaning client via `vtgate`) and `consolidator`
+ * Query Sources - indicator of the source of the `vttablet` query results.
+ Typical values:
+   * `mysql`: results came directly from the underlying MySQL instance
+   * `consolidator`: results came from the Vitess query consolidator
  * MySQL time - Time spent in MySQL, i.e. how long it took for the query
  to return after it was sent to MySQL.
  * Conn Wait Time - How long (in seconds with microsecond precision) the
