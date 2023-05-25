@@ -76,14 +76,20 @@ def determine_errant_gtid(keyspace_shard, first_run, second_run):
     second = {}
     for line in first_run.split('\n'):
         if len(line) == 0: continue
-        tablet, _, _, tablet_type, _, _, _, _, repl_positions, lag = line.split(' ')
+        try:
+            tablet, _, _, tablet_type, _, _, _, _, repl_positions, lag = line.split(' ')
+        except ValueError:
+            tablet, _, _, tablet_type, _, _, _, _, _, repl_positions, lag = line.split(' ')
         first[tablet] = {}
         first[tablet]["tablet_type"] = tablet_type
         first[tablet]["repl_positions"] = parse_positions(repl_positions)
         first[tablet]["lag"] = int(lag)
     for line in second_run.split('\n'):
         if len(line) == 0: continue
-        tablet, _, _, tablet_type, _, _, _, _, repl_positions, lag = line.split(' ')
+        try:
+            tablet, _, _, tablet_type, _, _, _, _, repl_positions, lag = line.split(' ')
+        except ValueError:
+            tablet, _, _, tablet_type, _, _, _, _, _, repl_positions, lag = line.split(' ')
         second[tablet] = {}
         second[tablet]["tablet_type"] = tablet_type
         second[tablet]["repl_positions"] = parse_positions(repl_positions)
