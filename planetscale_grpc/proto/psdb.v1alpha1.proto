@@ -1,0 +1,14 @@
+syntax = "proto3";
+package psdb.v1alpha1;
+
+import "psdb.data_v1alpha1.proto";
+
+option go_package = "github.com/planetscale/edge-gateway/proto/psdb/v1alpha1;psdbv1alpha1";
+
+service Database {
+  rpc CreateSession(psdb.data_v1alpha1.CreateSessionRequest) returns (psdb.data_v1alpha1.CreateSessionResponse) {}
+  rpc Execute(psdb.data_v1alpha1.ExecuteRequest) returns (psdb.data_v1alpha1.ExecuteResponse) {}
+  rpc StreamExecute(psdb.data_v1alpha1.ExecuteRequest) returns (stream psdb.data_v1alpha1.ExecuteResponse) {}
+  rpc Prepare(psdb.data_v1alpha1.PrepareRequest) returns (psdb.data_v1alpha1.PrepareResponse) {}
+  rpc CloseSession(psdb.data_v1alpha1.CloseSessionRequest) returns (psdb.data_v1alpha1.CloseSessionResponse) {}
+}
