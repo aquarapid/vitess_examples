@@ -168,4 +168,54 @@ Now that we have covered the caveats, here are some more concrete guidelines:
    be loaded in the background after restart.  This will help when rolling
    instances for upgrades or other maintenance.
 
+## Examples:
 
+ * Obtaining the table (i.e. clustered PRIMARY index) and secondary index
+ on-disk sizes for a table:
+```
+mysql> select table_name, index_name, round(stat_value*16384/1024/1024) as size_MiB 
+from mysql.innodb_index_stats where table_name = "sbtest1" and database_name = "test1" 
+and stat_name = "size";
++------------+------------+----------+
+| table_name | index_name | size_MiB |
++------------+------------+----------+
+| sbtest1    | PRIMARY    |     6428 |
+| sbtest1    | k_1        |      446 |
++------------+------------+----------+
+```
+ * Combining the above with the statistics about how much of the indexes
+ are currently cached, keeping in mind that some indexes might not show
+ up in this query if none of their pages are in cache.  This might occur
+ when either the index has never been used, or the index page was in cache,
+ but was evicted because of memory pressure elsewhere:
+```
+mysql> select innodb_tables.name AS table_name, innodb_indexes.name AS index_name, 
+round(stat_value*16384/1024/1024) as size_MiB, 
+round(innodb_cached_indexes.n_cached_pages*16384/1024/1024) as cached_MiB 
+FROM information_schema.innodb_cached_indexes, information_schema.innodb_indexes, 
+information_schema.innodb_tables, mysql.innodb_index_stats 
+WHERE database_name = "test1" and innodb_index_stats.table_name = "sbtest1" 
+and innodb_cached_indexes.index_id = innodb_indexes.index_id and 
+innodb_indexes.table_id = innodb_tables.table_id and 
+innodb_tables.name = concat(innodb_index_stats.database_name, "/", innodb_index_stats.table_name) 
+and stat_name = "size" and innodb_index_stats.index_name = innodb_indexes.name 
+order by table_name, size_MiB desc;
++---------------+------------+----------+------------+
+| table_name    | index_name | size_MiB | cached_MiB |
++---------------+------------+----------+------------+
+| test1/sbtest1 | PRIMARY    |     6428 |         25 |
+| test1/sbtest1 | k_1        |      446 |         17 |
++---------------+------------+----------+------------+
+```
+ * For reference, the table used above is a standard sysbench test table,
+ with definition:
+```
+CREATE TABLE `sbtest1` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `k` int NOT NULL DEFAULT '0',
+  `c` char(120) NOT NULL DEFAULT '',
+  `pad` char(60) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `k_1` (`k`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
