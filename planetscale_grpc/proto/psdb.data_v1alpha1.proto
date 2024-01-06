@@ -1,9 +1,9 @@
 syntax = "proto3";
 package psdb.data_v1alpha1;
 
-import "vitess/query/v15/query.proto";
-import "vitess/vtgate/v15/vtgate.proto";
-import "vitess/vtrpc/v15/vtrpc.proto";
+import "vitess/query/v16/query.proto";
+import "vitess/vtgate/v16/vtgate.proto";
+import "vitess/vtrpc/v16/vtrpc.proto";
 import "psdb.data_v1.proto";
 
 option go_package = "github.com/planetscale/edge-gateway/proto/psdb/data_v1alpha1;psdbdatav1alpha1";
@@ -27,14 +27,14 @@ message ExecuteRequest {
   Session session = 1;
 
   string query = 2;
-  map<string, vitess.query.v15.BindVariable> bind_variables = 3;
+  map<string, vitess.query.v16.BindVariable> bind_variables = 3;
 }
 
 message ExecuteResponse {
   Session session = 1;
 
-  vitess.query.v15.QueryResult result = 2;
-  vitess.vtrpc.v15.RPCError error = 3;
+  vitess.query.v16.QueryResult result = 2;
+  vitess.vtrpc.v16.RPCError error = 3;
 
   // optional timing, in seconds, for the response, if empty or 0, this wasn't set
   // does not exist in the response from a StreamExecute.
@@ -45,14 +45,14 @@ message PrepareRequest {
   Session session = 1;
 
   string query = 2;
-  map<string, vitess.query.v15.BindVariable> bind_variables = 3;
+  map<string, vitess.query.v16.BindVariable> bind_variables = 3;
 }
 
 message PrepareResponse {
   Session session = 1;
 
-  repeated vitess.query.v15.Field fields = 2;
-  vitess.vtrpc.v15.RPCError error = 3;
+  repeated vitess.query.v16.Field fields = 2;
+  vitess.vtrpc.v16.RPCError error = 3;
 }
 
 message CloseSessionRequest {
@@ -61,10 +61,10 @@ message CloseSessionRequest {
 
 message CloseSessionResponse {
   Session session = 1;
-  vitess.vtrpc.v15.RPCError error = 2;
+  vitess.vtrpc.v16.RPCError error = 2;
 }
 
 message Session {
   bytes signature = 1;
-  vitess.vtgate.v15.Session vitess_session = 2;
+  vitess.vtgate.v16.Session vitess_session = 2;
 }
