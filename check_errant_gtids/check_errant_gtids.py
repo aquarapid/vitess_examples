@@ -4,7 +4,7 @@
 # Tool to check for the presence of errant GTIDs in a Vitess keyspace
 #
 # Usage:
-#   check_errant_gtids.py <vtctld_host>:<vtctld_port> <keyspace>
+#   check_errant_gtids.py <vtctld_host>:<vtctld_port> <keyspace or keyspace/shard>
 #
 #   vtctlclient is expected to be in the PATH
 #
@@ -153,7 +153,7 @@ def do_gtid_checks(keyspace_shard, first, second):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage:  %s <vtctld_host>:<vtctld_port> <keyspace>" % sys.argv[0])
+        print("Usage:  %s <vtctld_host>:<vtctld_port> <keyspace or keyspace/shard>" % sys.argv[0])
         sys.exit(1)
     if not shutil.which('vtctlclient'):
         print("Cannot find vtctlclient in path, bailing.")
@@ -162,14 +162,20 @@ if __name__ == "__main__":
     vtctld_spec = sys.argv[1]
     keyspace    = sys.argv[2]
 
-    rc, err, stdout = run_command("vtctlclient --action_timeout=5s --server %s FindAllShardsInKeyspace %s" % (vtctld_spec, keyspace), shell=True)
-    if rc:
-        print("Probable timeout enumerating all shards in keyspace %s, bailing" % keyspace)
-        print("Error was:  ", err)
-        sys.exit(10)
+    shard = None
+    if "/" in keyspace:
+        keyspace, shard = keyspace.split("/")
 
+    if not shard:
+        rc, err, stdout = run_command("vtctlclient --action_timeout=5s --server %s FindAllShardsInKeyspace %s" % (vtctld_spec, keyspace), shell=True)
+        if rc:
+            print("Probable timeout enumerating all shards in keyspace %s, bailing" % keyspace)
+            print("Error was:  ", err)
+            sys.exit(10)
+        shards = json.loads(stdout).keys()
+    else:
+        shards = [shard]
 
-    shards = json.loads(stdout).keys()
     for shard in shards:
         rc, err, first_run_output = run_command("vtctlclient --action_timeout=5s --server %s ShardReplicationPositions %s/%s" % (vtctld_spec, keyspace, shard), shell=True)
         if rc:
