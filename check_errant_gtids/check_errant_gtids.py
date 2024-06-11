@@ -65,8 +65,8 @@ def run_command(command, timeout=None, shell=False, path=None):
 def parse_positions(position_str):
     d = {}
     for position in position_str.replace('MySQL56/', '').split(','):
-        gtid, offset_range = position.strip().split(':')
-        d[gtid] = offset_range
+        gtid, offset_ranges = position.strip().split(':')[0], position.strip().split(':')[1:]
+        d[gtid] = offset_ranges
     return d
 
 def determine_errant_gtid(keyspace_shard, first_run, second_run):
@@ -139,16 +139,18 @@ def do_gtid_checks(keyspace_shard, first, second):
 
     primary_tablet = get_primary(first)
     for gtid in combos_to_examine:
-        primary_offset = int(first[primary_tablet]['repl_positions'][gtid].split('-')[-1])
-        for tablet in first:
-            if tablet == primary_tablet: continue
-            replica_offset = int(first[tablet]['repl_positions'][gtid].split('-')[-1])
-            if replica_offset > primary_offset:
-                print("Primary tablet %s for shard %s is behind replica tablet %s for GTIDs %s:%s-%s" % (primary_tablet, keyspace_shard, tablet, gtid, primary_offset+1, replica_offset))
-                print("\nTo inject empty TXes execute something like this (after verifying):")
-                for offset in range(primary_offset+1, replica_offset+1):
-                    print("set gtid_next='%s:%s'; begin; commit;" % (gtid, offset))
-                sys.exit(6)
+        for primary_offset in first[primary_tablet]['repl_positions'][gtid]:
+            primary_offset = int(primary_offset.split('-')[-1])
+            for tablet in first:
+                if tablet == primary_tablet: continue
+                for replica_offset in first[tablet]['repl_positions'][gtid]:
+                    replica_offset = int(replica_offset.split('-')[-1])
+                    if replica_offset > primary_offset:
+                        print("Primary tablet %s for shard %s is behind replica tablet %s for GTIDs %s:%s-%s" % (primary_tablet, keyspace_shard, tablet, gtid, primary_offset+1, replica_offset))
+                        print("\nTo inject empty TXes execute something like this (after verifying):")
+                        for offset in range(primary_offset+1, replica_offset+1):
+                            print("set gtid_next='%s:%s'; begin; commit;" % (gtid, offset))
+                        sys.exit(6)
 
 
 if __name__ == "__main__":
